@@ -1,0 +1,6 @@
+name = "ocultar-landing"
+pages_build_output_dir = "."
+
+[[kv_namespaces]]
+binding = "WAITLIST"
+id      = "2ce6e5f6c678448fa95913281c52352d"
