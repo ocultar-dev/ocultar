@@ -25,4 +25,8 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Run govulncheck
-        run: govulncheck ./...
+        run: |
+          for module in apps/proxy apps/sombra internal/pii pkg/gateway services/refinery services/vault; do
+            echo "=== $module ==="
+            govulncheck -C "$module" ./... || exit 1
+          done
