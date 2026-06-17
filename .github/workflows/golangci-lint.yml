@@ -26,5 +26,6 @@ jobs:
         with:
           args: --timeout=5m
           version: latest
+          install-mode: goinstall
         env:
           CGO_ENABLED: "1"
