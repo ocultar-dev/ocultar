@@ -1,0 +1,10 @@
+--- .github/workflows/golangci-lint.yml
++++ .github/workflows/golangci-lint.yml
+@@ -24,7 +24,7 @@
+ 
+       - uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
+         with:
+-          args: --timeout=5m
++          args: --timeout=5m ./apps/proxy/... ./apps/sombra/... ./internal/pii/... ./pkg/gateway/... ./services/refinery/... ./services/vault/...
+           version: latest
+           install-mode: goinstall
