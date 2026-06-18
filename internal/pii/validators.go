@@ -424,10 +424,7 @@ func IsSGIDValid(s string) bool {
 	case 'G':
 		table = "TRQPNMLKXWU"
 	case 'M':
-		table = "KLJN PQR TUWX"
 		// M series: 0=K, 1=L, 2=J, 3=N, 4=P, 5=Q, 6=R, 7=T, 8=U, 9=W, 10=X
-		table = "KLJN PQR TUWX" // Note: space at index 4 is just for clarity or if it's 1-indexed? No.
-		table = "KLJN PQRTUWX" // 11 characters
 		table = "KLJNPQRTUWX"
 	}
 

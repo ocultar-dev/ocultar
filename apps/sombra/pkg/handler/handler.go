@@ -161,13 +161,16 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 	if fetchResp.ContentType == "application/json" {
 		// Structured Redaction for JSON data
 		var jsonData interface{}
-		if err := json.Unmarshal([]byte(prescrubbedData), &jsonData); err == nil {
-			processed, err := g.eng.ProcessInterface(jsonData, fetchReq.Actor)
+		err = json.Unmarshal([]byte(prescrubbedData), &jsonData)
+		if err == nil {
+			var processed interface{}
+			processed, err = g.eng.ProcessInterface(jsonData, fetchReq.Actor)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("structured redaction failed: %v", err), http.StatusInternalServerError)
 				return
 			}
-			redactedBytes, err := json.MarshalIndent(processed, "", "  ")
+			var redactedBytes []byte
+			redactedBytes, err = json.MarshalIndent(processed, "", "  ")
 			if err != nil {
 				http.Error(w, "structured redaction marshal failed", http.StatusInternalServerError)
 				return
