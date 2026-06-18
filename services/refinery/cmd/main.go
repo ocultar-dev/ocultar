@@ -1401,7 +1401,7 @@ func startServer(eng *refinery.Refinery, servePort string) {
 	})
 
 	port := strings.TrimPrefix(servePort, ":")
-	addr := "127.0.0.1:" + port
+	addr := "0.0.0.0:" + port
 	fmt.Printf("OCULTAR REST API running on http://%s\n", addr)
 	srv := &http.Server{
 		Addr:              addr,
