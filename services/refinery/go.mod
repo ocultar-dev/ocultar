@@ -8,7 +8,7 @@ replace github.com/ocultar-dev/ocultar/vault => ../vault
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/nyaruka/phonenumbers v1.6.10
+	github.com/nyaruka/phonenumbers v1.8.0
 	github.com/ocultar-dev/ocultar/internal/pii v0.0.0-00010101000000-000000000000
 	github.com/ocultar-dev/ocultar/vault v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.23.2
