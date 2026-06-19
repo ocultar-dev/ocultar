@@ -112,3 +112,6 @@ doppler.yaml
 
 .wrangler/
 .gstack/
+
+# Local wiki repository clone
+ocultar-wiki/
