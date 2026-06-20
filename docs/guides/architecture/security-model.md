@@ -49,7 +49,7 @@ Every security-relevant event is logged in a way that is difficult to forge.
 ---
 
 ## 6. Deterministic Tokenization
-Tokens are generated using `SHA-256(original_PII)`.
+Tokens are generated using `HMAC-SHA256(Derived_HMAC_Key, original_PII)`.
 - **Consistency**: The same PII always produces the same token.
 - **Safe Analytics**: This allows data teams to perform joins, counts, and frequency analysis on tokenized data without ever needing to de-tokenize it.
 - **Example**: `John Doe` -> `token_abc123`. If `John Doe` appears in 10 different documents, all will have `token_abc123`.

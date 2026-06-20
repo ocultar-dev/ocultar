@@ -6,7 +6,7 @@ OCULTAR is a **Zero-Egress PII Refinery** designed to bridge the gap between int
 
 1.  **Zero-Egress**: All PII detection and tokenization happen within your trust boundary. No network calls are made to third-party detection providers.
 2.  **Fail-Closed**: If any part of the refinery fails (e.g., SLM timeout, vault failure), the system blocks the request rather than risking data exposure.
-3.  **Deterministic Tokenization**: Input PII is hashed (SHA-256) to produce consistent tokens, allowing for privacy-safe analytical joins without de-tokenization.
+3.  **Deterministic Tokenization**: Input PII is hashed (HMAC-SHA256) to produce consistent tokens securely keyed to the deployment, allowing for privacy-safe analytical joins without de-tokenization.
 
 ---
 

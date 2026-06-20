@@ -48,7 +48,7 @@ Every detected entity is replaced by a deterministic token (`[EMAIL_9c8f7a1b]`) 
 
 **Key derivation:** The vault key is never stored on disk. At startup, `OCU_MASTER_KEY` and `OCU_SALT` are passed through HKDF-SHA256 to derive a per-deployment encryption key that lives only in memory.
 
-**Token format:** `SHA-256(original_value)[:8]` as hex. The same input always produces the same token within a vault, which allows privacy-safe analytics (joins, counts) on tokenized data without de-tokenization.
+**Token format:** `HMAC-SHA256(Derived_HMAC_Key, original_value)[:16]` as hex. The same input always produces the same token within a vault, which allows privacy-safe analytics (joins, counts) on tokenized data without de-tokenization.
 
 **Reveal:** Authorized callers (bearer token = `OCU_AUDITOR_TOKEN`) can call `POST /api/reveal` to restore tokens to originals. Every reveal call is recorded in the audit log.
 
@@ -125,5 +125,5 @@ The client is responsible for substituting tokens back into the AI response afte
 | Vault encrypted at rest | AES-256-GCM, key derived via HKDF-SHA256, never written to disk |
 | Fail-closed on vault error | `StoreToken` failure → 500, upstream never called |
 | Tamper-evident audit log | Ed25519-signed NDJSON entries, key in OS keychain |
-| Consistent tokenization | `SHA-256(value)[:8]` — same input, same token |
+| Consistent tokenization | `HMAC-SHA256(key, value)[:16]` — same input, same token |
 | Evasion resistance | Base64/JWT decoded and scanned before masking |

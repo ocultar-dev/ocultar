@@ -23,7 +23,7 @@
 
 ## 1. The Problem: Token Fragmentation
 
-By default, OCULTAR's vault is a string-to-token map. Every unique string produces an independent token based on its SHA-256 hash:
+By default, OCULTAR's vault is a string-to-token map. Every unique string produces an independent token based on its HMAC-SHA256 hash:
 
 ```
 "John"     → [PERSON_8d9c1b15]
@@ -56,7 +56,7 @@ Canonical tokens use a **numeric suffix** (`[PERSON_1]`, `[PERSON_2]`) — disti
 
 ## 3. How It Works
 
-The entity registry is checked **before** the SHA-256 hash path in `getOrSetSecureResult`. For any PERSON-class entity type, the refinery calls `vault.LookupVariant(value)` first:
+The entity registry is checked **before** the HMAC-SHA256 hash path in `getOrSetSecureResult`. For any PERSON-class entity type, the refinery calls `vault.LookupVariant(value)` first:
 
 ```
 Refinery detects "John" (via SLM, Tier-1.5, or Tier-0 dictionary)
@@ -225,7 +225,7 @@ Two token formats now exist in the system:
 
 | Format | Example | Source | Rehydration |
 |---|---|---|---|
-| Hash token | `[PERSON_8d9c1b15]` | SHA-256 of original value, 8-char hex | AES-256-GCM decrypt from `vault` table |
+| Hash token | `[PERSON_8d9c1b151234abcd]` | HMAC-SHA256 of original value, 16-char hex | AES-256-GCM decrypt from `vault` table |
 | Entity token | `[PERSON_1]` | Sequential integer, operator-registered | Direct lookup from `canonical_entities` table |
 
 Both formats are valid OCULTAR tokens. They coexist in the same document — a document may contain both `[PERSON_1]` (a registered patient) and `[EMAIL_9c8f7a1b]` (an email detected at runtime).

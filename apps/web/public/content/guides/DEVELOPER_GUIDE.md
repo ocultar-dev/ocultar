@@ -332,7 +332,7 @@ func main() {
 | **Fail-closed** | Refinery errors must **block** processing — never forward partially-processed data. |
 | **Thread safety** | All shared state (e.g. `Hits` map) must be protected by a mutex. Use `atomic.Int64` for counters. |
 | **No side effects in tests** | Tests must not rely on disk state. Use `:memory:` for vault and `config.InitDefaults()`. |
-| **Token format** | `[TYPE_XXXXXXXX]` where `XXXXXXXX` is the first 8 hex characters of the SHA-256 of the original PII. Never change this format — it breaks existing vaults. |
+| **Token format** | `[TYPE_16HEXCHARS]` where `16HEXCHARS` is the first 16 hex characters of the HMAC-SHA256 of the original PII. Never change this format — it breaks existing vaults. |
 | **Logging** | Use stdlib `log`. Prefix proxy messages `[PROXY]`, refinery messages `[REFINERY]`, config messages `[config]`. |
 | **Imports** | `stdlib` → `external` → `internal` (the standard Go import grouping). |
 

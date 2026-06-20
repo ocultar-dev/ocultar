@@ -459,6 +459,6 @@ curl http://localhost:8086/v1/entities \
 
 ### How it integrates with the refinery
 
-Once entities are registered, the refinery automatically resolves any matching name fragment to the canonical token **before** the SHA-256 hash path. No configuration change is required — routing is automatic based on the token suffix format.
+Once entities are registered, the refinery automatically resolves any matching name fragment to the canonical token **before** the HMAC-SHA256 hash path. No configuration change is required — routing is automatic based on the token suffix format.
 
 For the full guide including token format details, database schema, and use-case examples (healthcare, legal, HR, CRM), see the [Entity Registry Guide](ENTITY_REGISTRY_GUIDE.md).

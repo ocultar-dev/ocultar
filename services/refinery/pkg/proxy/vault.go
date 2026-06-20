@@ -9,8 +9,8 @@ import (
 )
 
 // tokenRe matches OCULTAR vault tokens of the form [TYPE_hexhash8].
-// Examples: [PERSON_ab3c12ef], [EMAIL_00fa9b12], [PHONE_cc847211]
-var tokenRe = regexp.MustCompile(`\[[A-Z_]+_[0-9a-f]{8}\]`)
+// Examples: [PERSON_ab3c12ef1234abcd], [EMAIL_00fa9b12cc334455], [PHONE_cc847211ddeeff00]
+var tokenRe = regexp.MustCompile(`\[[A-Z_]+_[0-9a-f]{16}\]`)
 
 // RehydrateString scans s for vault tokens and replaces each with the
 // original PII recovered from the vault. Tokens not found in the vault

@@ -17,7 +17,7 @@ OCULTAR is a zero-egress PII redaction proxy: raw personally identifiable inform
 
 ### What it means technically
 
-"Zero-egress" means no raw PII value is transmitted to the upstream API under any operating condition. The redaction step in `services/refinery/pkg/proxy/proxy.go` is synchronous and blocking: the proxy constructs the upstream request only after `redactBody()` returns a sanitised payload with all PII replaced by opaque tokens (e.g. `[EMAIL_9c8f7a1b]`). If `redactBody()` returns an error for any reason, the request is rejected with HTTP 500 before the upstream connection is opened.
+"Zero-egress" means no raw PII value is transmitted to the upstream API under any operating condition. The redaction step in `services/refinery/pkg/proxy/proxy.go` is synchronous and blocking: the proxy constructs the upstream request only after `redactBody()` returns a sanitised payload with all PII replaced by opaque tokens (e.g. `[EMAIL_9c8f7a1b1234abcd]`). If `redactBody()` returns an error for any reason, the request is rejected with HTTP 500 before the upstream connection is opened.
 
 ### What the guarantee covers
 
@@ -101,7 +101,7 @@ HKDF-SHA256(ikm=OCU_MASTER_KEY, salt=OCU_SALT, info="ocultar-aes-key")
 ### Vault storage format
 
 Each vault entry stores:
-- `token_id`: first 8 hex characters of `SHA-256(plaintext_PII)` — deterministic, no secrets
+- `token_id`: first 16 hex characters of `HMAC-SHA256(Derived_HMAC_Key, plaintext_PII)` — securely keyed to the deployment to prevent dictionary attacks
 - `token_string`: `[TYPE_<token_id>]` — used for replacement in the payload
 - `ciphertext`: `hex(nonce || AES-256-GCM(plaintext_PII, derived_key))` — plaintext never stored
 
@@ -109,9 +109,9 @@ The vault database contains no plaintext PII. An attacker with read access to th
 
 ### Determinism property
 
-Because `token_id = SHA-256(plaintext)[:8]`, the same PII value always produces the same token across requests and vault sessions. This is a deliberate design property: it enables cross-document relational integrity (e.g. the same person appears as `[PERSON_181bc039]` in all documents) without storing a lookup table of plaintext values.
+Because `token_id = HMAC-SHA256(Derived_HMAC_Key, plaintext)[:16]`, the same PII value always produces the same token across requests and vault sessions. This is a deliberate design property: it enables cross-document relational integrity (e.g. the same person appears as `[PERSON_181bc0391234abcd]` in all documents) without storing a lookup table of plaintext values, while preventing dictionary attacks.
 
-**Implication:** token IDs are not secret. The confidentiality guarantee rests entirely on the ciphertext.
+**Implication:** Token IDs are secured by the deployment's HMAC key, preventing dictionary and brute-force attacks against low-entropy PII, while the confidentiality guarantee for the original value rests entirely on the AES-GCM ciphertext.
 
 ### Key management
 

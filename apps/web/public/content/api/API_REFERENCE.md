@@ -135,7 +135,7 @@ type DetectionResult struct {
 |---|---|
 | `entity` | PII type: `EMAIL`, `SSN`, `PHONE`, `PERSON`, `IBAN`, etc. |
 | `canonical_type` | Optional alias from the entity registry, if configured. |
-| `value_hash` | Full SHA-256 hex of the original value (safe to log — not reversible). |
+| `value_hash` | Full HMAC-SHA256 hex of the original value (safe to log — not reversible without key). |
 | `confidence` | Detection certainty `0.0–1.0`. Rule-based detections are always `1.0`. |
 | `method` | Detection source tags. See **Method Tags** below. |
 | `location` | Character offset of the match in the input string: `"start-end"`. |
@@ -352,11 +352,11 @@ type Provider interface {
 | Method | Description |
 |---|---|
 | `StoreToken(hash, token, encryptedPII string) (bool, error)` | Persists a PII mapping. Returns `(true, nil)` on new insertion, `(false, nil)` if the hash already exists (idempotent). |
-| `GetToken(hash string) (string, bool)` | Looks up the token for a given SHA-256 PII hash. Returns `("", false)` on miss. |
+| `GetToken(hash string) (string, bool)` | Looks up the token for a given HMAC-SHA256 PII hash. Returns `("", false)` on miss. |
 | `CountAll() int64` | Returns the total number of vault entries. Used for dashboard live metrics. |
 | `Close() error` | Releases database connections. Always defer `Close()` after obtaining a provider. |
 | `RegisterEntity(entityType, canonicalName string, variants []string) (string, error)` | Creates or merges a canonical entity in `canonical_entities`. All variants are inserted into `entity_variants`. Returns the canonical token (e.g. `[PERSON_1]`). Idempotent — re-registering the same `canonicalName` merges new variants and returns the existing token. |
-| `LookupVariant(variantName string) (string, bool)` | Case-insensitive lookup of a name fragment against `entity_variants`. Returns the canonical token if found. Used by the refinery before the SHA-256 hash path. |
+| `LookupVariant(variantName string) (string, bool)` | Case-insensitive lookup of a name fragment against `entity_variants`. Returns the canonical token if found. Used by the refinery before the HMAC-SHA256 hash path. |
 | `GetEntityByToken(token string) (string, bool)` | Reverse-lookup: given a numeric entity token (`[PERSON_1]`), returns the `canonical_name`. Used by `DecryptToken` to rehydrate without AES decryption. |
 | `SeedEntities(entries []EntitySeed) error` | Bulk-inserts a slice of `EntitySeed` records idempotently. Safe to re-run — duplicate `canonical_name` values are skipped. |
 | `ListEntities() ([]EntityRecord, error)` | Returns all registered canonical entities ordered by type then ID, each with their full variant list. |

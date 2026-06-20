@@ -29,7 +29,7 @@ func (e *Refinery) ApplyBucketing(numStr string, bucketSize int) (string, error)
 		e.Hits = append(e.Hits, pii.DetectionResult{
 			Entity:     "BUCKET",
 			Value:      numStr,
-			ValueHash:  sha256Hash(numStr),
+			ValueHash:  e.hashValue(numStr),
 			Confidence: 1.0,
 			Method:     []string{"bucketing"},
 			Location:   fmt.Sprintf("val:%d-%d", lower, upper),
@@ -78,7 +78,7 @@ func (e *Refinery) ApplyFPE(numericStr string) (string, error) {
 		e.Hits = append(e.Hits, pii.DetectionResult{
 			Entity:     "FPE",
 			Value:      numericStr,
-			ValueHash:  sha256Hash(numericStr),
+			ValueHash:  e.hashValue(numericStr),
 			Confidence: 1.0,
 			Method:     []string{"fpe"},
 			Location:   "preserved-format",

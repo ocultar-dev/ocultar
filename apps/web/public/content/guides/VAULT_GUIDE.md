@@ -38,7 +38,7 @@ Every token looks like `[TYPE_xxxxxxxx]` where:
 | Part | Example | Meaning |
 |---|---|---|
 | `TYPE` | `EMAIL`, `PERSON`, `SSN` | The detected PII category |
-| `xxxxxxxx` | `9c8f7a1b` | First 8 hex chars of SHA-256(plaintext) |
+| `16hexchars` | `9c8f7a1b1234abcd` | First 16 hex chars of HMAC-SHA256(key, plaintext) |
 
 Example: `alice@example.com` → `[EMAIL_9c8f7a1b]`
 
@@ -51,7 +51,7 @@ The hash suffix is **deterministic**: the same input always produces the same to
 For each detected PII match, the refinery runs:
 
 ```
-1. token_id  = hex(SHA-256(plaintext))[0:8]
+1. token_id  = hex(HMAC-SHA256(key, plaintext))[0:16]
 2. token     = "[TYPE_" + token_id + "]"
 3. ciphertext = AES-256-GCM(plaintext, HKDF(OCU_MASTER_KEY, OCU_SALT))
 4. vault.StoreToken(token_id, token, ciphertext)
@@ -144,7 +144,7 @@ This is the required pattern for all tests in `services/refinery`. See `CLAUDE.m
 |---|---|
 | **Confidentiality** | AES-256-GCM with a per-deployment key derived via HKDF(OCU_MASTER_KEY, OCU_SALT) |
 | **Integrity** | GCM authentication tag — any ciphertext modification causes decryption failure |
-| **Determinism** | SHA-256(plaintext) → token_id — same input, same token, across all requests |
+| **Determinism** | HMAC-SHA256(key, plaintext) → token_id — same input, same token, across all requests |
 | **Key rotation** | Change OCU_MASTER_KEY + OCU_SALT → all existing tokens become un-decryptable (requires vault reset) |
 | **Zero-egress** | Vault is always local — no PII is sent to any remote store |
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Does
 
-OCULTAR is a fully open-source, zero-egress PII detection and redaction proxy. It sits between a client and an upstream API (e.g., OpenAI, Gemini), intercepts requests, tokenizes all PII in-place using deterministic SHA-256 tokens (e.g., `[EMAIL_9c8f7a1b]`), and stores encrypted ciphertext in a local Vault. Responses can optionally rehydrate tokens back to plaintext for authorized callers. No raw PII ever reaches the upstream.
+OCULTAR is a fully open-source, zero-egress PII detection and redaction proxy. It sits between a client and an upstream API (e.g., OpenAI, Gemini), intercepts requests, tokenizes all PII in-place using deterministic HMAC-SHA256 tokens (e.g., `[EMAIL_9c8f7a1b1234abcd]`), and stores encrypted ciphertext in a local Vault. Responses can optionally rehydrate tokens back to plaintext for authorized callers. No raw PII ever reaches the upstream.
 
 All components — including the Sombra agentic gateway — are open source. There is no enterprise/community split.
 
@@ -157,7 +157,7 @@ Requests flow through the Refinery pipeline in order:
 ### Vault and Tokenization
 
 For each PII match:
-1. `token_id = SHA-256(plaintext_PII)[:8 hex chars]` — deterministic, same input → same token
+1. `token_id = HMAC-SHA256(Derived_HMAC_Key, plaintext_PII)[:16 hex chars]` — securely keyed to deployment, same input → same token
 2. `ciphertext = AES-256-GCM(plaintext_PII, HKDF(masterKey, salt))`
 3. Store `token_id → [TYPE_token_id] + ciphertext` in Vault
 4. Replace PII in payload with `[TYPE_token_id]`
@@ -218,7 +218,7 @@ When working on OCULTAR, adopt the following specialized roles as needed:
 *   **CEO / Founder**: Focuses on "The Switzerland of Data" positioning. Use `/plan-ceo-review` for strategic shifts.
 *   **Chief Security Officer (CSO)**: Mandates **Fail-Closed** logic. Use `/cso` for STRIDE audits on Go detection tiers.
 *   **Staff Engineer**: Owns the Go Workspace (`go.work`) integrity. Use `/plan-eng-review` for architecture locks.
-*   **QA Lead**: Use `/qa` to verify that PII tokenization (SHA-256) is deterministic and that responses are correctly rehydrated.
+*   **QA Lead**: Use `/qa` to verify that PII tokenization (HMAC-SHA256) is deterministic and that responses are correctly rehydrated.
 *   **Developer Experience (DX) Lead**: Optimizes the "5-minute deployment" path and the `Makefile` workflow. Use `/devex-review` for feedback.
 
 ## Sovereign Development Workflow

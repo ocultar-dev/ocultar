@@ -3,6 +3,7 @@ package refinery
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -20,6 +21,7 @@ import (
 	"github.com/ocultar-dev/ocultar/internal/pii"
 	"github.com/ocultar-dev/ocultar/pkg/config"
 	"github.com/ocultar-dev/ocultar/vault"
+	"golang.org/x/crypto/hkdf"
 )
 
 // AuditLogger defines the interface for the SIEM audit logger
@@ -119,6 +121,7 @@ type DryRunReport struct {
 type Refinery struct {
 	Vault        vault.Provider
 	MasterKey    []byte
+	HmacKey      []byte
 	DryRun       bool
 	Report       bool
 	Serve        string
@@ -152,9 +155,16 @@ func NewRefinery(v vault.Provider, key []byte) *Refinery {
 	if v != nil {
 		count = v.CountAll()
 	}
+
+	// Derive HMAC key from MasterKey via HKDF for token generation
+	r := hkdf.New(sha256.New, key, nil, []byte("ocultar-token-hmac"))
+	hmacKey := make([]byte, 32)
+	io.ReadFull(r, hmacKey)
+
 	e := &Refinery{
 		Vault:       v,
 		MasterKey:   key,
+		HmacKey:     hmacKey,
 		VaultCount:  &atomic.Int64{},
 		Hits:        []pii.DetectionResult{},
 		AuditLogger: NoopAuditLogger{},
@@ -1009,8 +1019,8 @@ func (e *Refinery) getOrSetSecureResult(res pii.DetectionResult, actor string) (
 		}
 	}
 
-	hash := sha256Hash(res.Value)
-	token := fmt.Sprintf("[%s_%s]", res.Entity, hash[:8])
+	hash := e.hashValue(res.Value)
+	token := fmt.Sprintf("[%s_%s]", res.Entity, hash[:16])
 
 	if e.DryRun || e.Report || e.Serve != "" {
 		e.hitsMutex.Lock()
@@ -1048,9 +1058,10 @@ func (e *Refinery) getOrSetSecureResult(res pii.DetectionResult, actor string) (
 	return token, nil
 }
 
-func sha256Hash(s string) string {
-	sum := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(sum[:])
+func (e *Refinery) hashValue(s string) string {
+	mac := hmac.New(sha256.New, e.HmacKey)
+	mac.Write([]byte(s))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // isLuhnValid implements the Luhn algorithm (mod 10) for credit card checksum validation.

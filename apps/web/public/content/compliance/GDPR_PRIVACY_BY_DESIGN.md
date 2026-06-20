@@ -36,7 +36,7 @@ This document maps OCULTAR's technical architecture to the requirements of **GDP
 
 | Requirement | OCULTAR Implementation |
 |---|---|
-| Personal data must be pseudonymised where possible | Every PII value is replaced with a deterministic token: `[TYPE_token_id]` (e.g. `[EMAIL_9c8f7a1b]`). The token is a SHA-256 digest of the plaintext, truncated to 8 hex characters. The mapping between token and plaintext is stored only in the encrypted vault — never transmitted. |
+| Personal data must be pseudonymised where possible | Every PII value is replaced with a deterministic token: `[TYPE_token_id]` (e.g. `[EMAIL_9c8f7a1b1234abcd]`). The token is an HMAC-SHA256 digest of the plaintext securely keyed to the deployment, truncated to 16 hex characters. The mapping between token and plaintext is stored only in the encrypted vault — never transmitted. |
 | Pseudonymisation must be reversible only by authorised parties | Token re-hydration (reveal) requires `OCU_AUDITOR_TOKEN`, which must match the server-side secret. Every reveal call is logged in the Ed25519-signed audit trail with actor, timestamp, and payload hash. |
 | Re-identification must require additional information | The vault master key (`OCU_MASTER_KEY`) is required to decrypt any stored ciphertext. Without it, tokens are opaque and non-invertible. Key is stored in AWS Secrets Manager or equivalent — never in the container image or environment plaintext. |
 
@@ -95,7 +95,7 @@ Blocked target classes:
 
 | GDPR Obligation | Satisfied By | Verifiable Evidence |
 |---|---|---|
-| Pseudonymisation | SHA-256 deterministic token replacement | Token format `[TYPE_xxxxxxxx]` in all upstream payloads |
+| Pseudonymisation | HMAC-SHA256 deployment-keyed token replacement | Token format `[TYPE_16hexchars]` in all upstream payloads |
 | Data minimisation | Zero-egress proxy: upstream receives tokens only | Network capture shows no raw PII in upstream requests |
 | Privacy by default | Fail-closed on every error path | 9 automated fail-closed tests in `services/refinery/fail_closed_test.go` |
 | Encryption at rest | AES-256-GCM vault with HKDF-SHA256 | Vault file contains no readable plaintext |

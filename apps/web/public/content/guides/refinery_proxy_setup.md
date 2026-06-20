@@ -143,6 +143,6 @@ The `OCU_MASTER_KEY` and `OCU_SALT` are the root of your Sovereign Vault's secur
 ### Encryption & Security Protocol
 All Sovereign Data Objects (SDOs) are protected using industry-standard authenticated encryption:
 1. **Key Derivation**: On boot, the `OCU_MASTER_KEY` and `OCU_SALT` are passed through **HKDF-SHA256** to derive the 32-byte AES refinery key. 
-2. **Deterministic Hashing**: PII is hashed using **SHA-256** to create a unique vault index.
+2. **Deterministic Hashing**: PII is hashed using **HMAC-SHA256** to create a unique vault index.
 3. **Authenticated Encryption**: SDOs are encrypted using **AES-256-GCM**. Each record includes a unique cryptographically secure random nonce, ensuring that the same PII encrypted twice produces different ciphertexts.
 4. **Data-at-Rest**: Only the hashed index and the GCM-protected ciphertext are stored in the vault. **Raw PII never touches the disk.**

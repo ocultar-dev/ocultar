@@ -66,5 +66,5 @@ Secrets: copy `.env.example` to `.env` and fill in values, then `make build && .
 ## 📝 Coding Conventions
 - **Fail-Closed**: Always block on error. Never return partially cleaned data.
 - **Thread Safety**: All shared state must be protected by mutexes or atomics.
-- **Deterministic**: Tokens must be derived via `SHA-256(PII)`.
+- **Deterministic**: Tokens must be derived via `HMAC-SHA256(key, PII)`.
 - **No Panics**: Never panic in `pkg/` packages. Return errors to the caller.

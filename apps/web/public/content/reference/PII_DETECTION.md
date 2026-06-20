@@ -94,7 +94,7 @@ The Entity Registry (`services/vault/entity_registry.go`) is a persistent, sessi
 
 - Pre-seed known identities (patients, employees, contacts) via `POST /v1/entities` or `POST /v1/entities/seed` on the Sombra gateway.
 - All name variants map to a single canonical token: `[PERSON_1]`, `[PERSON_2]`, etc.
-- The refinery checks `entity_variants` before the SHA-256 hash path for any `PERSON`, `PERSON_VIP`, `HEALTH_ENTITY`, `PROTECTED_ENTITY`, or `ORGANIZATION` match.
+- The refinery checks `entity_variants` before the HMAC-SHA256 hash path for any `PERSON`, `PERSON_VIP`, `HEALTH_ENTITY`, `PROTECTED_ENTITY`, or `ORGANIZATION` match.
 - Numeric-suffix tokens (`[PERSON_1]`) rehydrate via `GetEntityByToken` — bypassing AES decryption. Hash-suffix tokens (`[PERSON_8d9c1b15]`) follow the standard AES path.
 - Seeding is idempotent and safe to re-run. See the [Entity Registry Guide](../guides/ENTITY_REGISTRY_GUIDE.md) for full API documentation.
 
@@ -108,7 +108,7 @@ A dataset where every email has been replaced with `[EMAIL_9c8f7a1b]` still supp
 - **Frequency analysis** — which customers appear most often, without exposing who they are
 - **Anomaly detection** — token-level clustering and outlier detection on sensitive fields
 
-Re-hydration to plaintext is only required when a human must read a specific value. All analytical workloads can remain in the tokenized domain. This property is a direct consequence of the SHA-256-based token design in `getOrSetSecureResult` (`services/refinery/pkg/refinery/refinery.go`) and requires no additional configuration.
+Re-hydration to plaintext is only required when a human must read a specific value. All analytical workloads can remain in the tokenized domain. This property is a direct consequence of the HMAC-SHA256-based token design in `getOrSetSecureResult` (`services/refinery/pkg/refinery/refinery.go`) and requires no additional configuration.
 
 ## 5. Auditor Verification Note
 

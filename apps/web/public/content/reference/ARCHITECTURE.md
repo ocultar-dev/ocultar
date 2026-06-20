@@ -250,7 +250,7 @@ Two token formats coexist in the system:
 original PII: "john@example.com"
         │
         ▼
-  SHA-256("john@example.com")
+  HMAC-SHA256(key, "john@example.com")
   = 9c8f7a1b3f2e4d6a...  (full 64-char hex)
         │
         ├──► Token: [EMAIL_9c8f7a1b]   ← first 8 hex chars (safe to expose)
@@ -296,7 +296,7 @@ Total overhead per PII value: 12 bytes (nonce) + 16 bytes (auth tag) = 28 bytes 
 
 | Column | Type | Content |
 |---|---|---|
-| `pii_hash` | TEXT (PK) | Full SHA-256 hex of original PII — lookup key |
+| `pii_hash` | TEXT (PK) | Full HMAC-SHA256 hex of original PII — lookup key |
 | `token` | TEXT | `[TYPE_XXXXXXXX]` string — safe to expose |
 | `encrypted_pii` | TEXT | Hex-encoded AES-256-GCM ciphertext |
 
