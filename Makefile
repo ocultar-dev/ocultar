@@ -1,12 +1,9 @@
 .PHONY: all build test clean sync-work
 
-all: sync-work provision-llama build test
+all: sync-work build test
 
 sync-work:
 	go work sync
-
-provision-llama:
-	bash scripts/provision_llama.sh
 
 build:
 	CGO_ENABLED=1 go build ./internal/pii/...

@@ -74,8 +74,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to initialize privacy-filter scanner: %v", err)
 		}
-	case "llama-cpp", "openai-chat":
-		log.Fatal("[FATAL] openai-chat (llama.cpp) engine not yet implemented in slm-engine. Use SLM_ADAPTER=privacy-filter")
 	default:
 		log.Fatalf("[FATAL] Unknown SLM_ADAPTER: %s", adapter)
 	}
