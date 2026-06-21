@@ -33,6 +33,12 @@ func extractText(name string, data []byte) (string, error) {
 	}
 }
 
+// maxOOXMLEntryBytes caps the decompressed size read from a single OOXML zip
+// entry (word/document.xml, a slide, sharedStrings.xml, etc.). Without this, a
+// small, highly-compressible XML payload — a zip bomb — could decompress to an
+// unbounded size in memory.
+const maxOOXMLEntryBytes = 64 << 20 // 64 MiB per entry
+
 // extractZipXML opens an OOXML ZIP archive and concatenates all character data
 // from XML elements whose local name matches elemName across every file that
 // passes the pathFilter predicate.
@@ -47,11 +53,18 @@ func extractZipXML(data []byte, pathFilter func(string) bool, elemName string) (
 		if !pathFilter(f.Name) {
 			continue
 		}
+		// The declared size in zip metadata is attacker-controlled and may
+		// understate the real decompressed size, so reject oversized entries
+		// up front and also hard-cap the actual bytes read below regardless
+		// of what the header claims.
+		if f.UncompressedSize64 > maxOOXMLEntryBytes {
+			continue
+		}
 		rc, err := f.Open()
 		if err != nil {
 			continue
 		}
-		text, _ := xmlCharData(rc, elemName)
+		text, _ := xmlCharData(io.LimitReader(rc, maxOOXMLEntryBytes+1), elemName)
 		rc.Close() //nolint:errcheck
 		if text != "" {
 			sb.WriteString(text)
