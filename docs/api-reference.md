@@ -213,7 +213,7 @@ Bulk-insert multiple entity registry entries in one call.
 | `IP_ADDRESS` | IPv4 and IPv6 addresses |
 | `FINANCIAL` | Account numbers, routing numbers, financial identifiers |
 
-Full list of 117 supported types: `data/pii_coverage.json` in the repository.
+Tier 1 (deterministic refinery) covers 63 PII/PHI entity types across 12 categories; see `internal/pii/registry.go` for the full list. Tier 2 (SLM-assisted contextual AI) extends coverage toward 117 types — see `ROADMAP.md` for current status.
 
 ---
 

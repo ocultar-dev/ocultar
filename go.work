@@ -2,6 +2,7 @@ go 1.25.11
 
 use (
 	./apps/proxy
+	./apps/slm-engine
 	./apps/sombra
 	./internal/pii
 	./pkg/gateway

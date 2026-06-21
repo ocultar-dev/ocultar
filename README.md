@@ -149,7 +149,7 @@ privacy-filter protocol (default).
 
 - **Zero-egress design.** Masked tokens (`[EMAIL_9c8f7a1b2d3e4f50]`, …) are the only data forwarded to the upstream model. Raw text is not transmitted.
 - **Local vault only.** The mapping of each token back to its original value is stored in an encrypted DuckDB vault (`vault.db`) on the local filesystem using AES-256-GCM with HKDF-SHA256. The vault file is never transmitted.
-- **Raw prompt retention.** The refinery logs each raw (unmasked) prompt locally to the vault to support the audit diff view. This data is encrypted at rest alongside the token mappings and is not sent anywhere. If prompt retention is not desired, do not configure `OCU_AUDITOR_TOKEN` — without an auditor token the reveal endpoint returns `403` and the diff view is inaccessible.
+- **Token mapping retention.** Each detected PII value is encrypted and stored in the vault keyed by its token (e.g. `[EMAIL_9c8f7a1b2d3e4f50]` → ciphertext). The refinery does not store the raw, unmasked prompt as a whole — only the individual token-to-plaintext mappings. `/api/reveal` decrypts mappings for tokens it's given; it does not reconstruct or diff the original prompt. If reveal access is not desired, do not configure `OCU_AUDITOR_TOKEN` — without an auditor token the endpoint returns `403`.
 - **Fail-closed design.** If the refinery encounters an error or is unavailable, the gateway returns a `5xx` error and stops — it does not forward raw text as a fallback.
 
 ---

@@ -152,6 +152,7 @@ Requests flow through the Refinery pipeline in order:
 | 1.2 | Address Shield | Heuristic address parser |
 | 1.5 | Contextual Shield | Interrogative name detection (e.g., "Where does [NAME] live?") and greeting/signature logic |
 | 2 | AI NER | Sends text to SLM sidecar for deep named-entity recognition. Optimized for French Finance. |
+| 2.5 | Boundary Artifact Cleanup | Absorbs orphaned 1-3 char residues left adjacent to tokens by SLM sub-word tokenization (e.g. `[ORG_...]7`) to prevent partial PII leakage |
 | 3 | Structural Heuristics | Context-aware detection for structured document types |
 
 ### Vault and Tokenization
