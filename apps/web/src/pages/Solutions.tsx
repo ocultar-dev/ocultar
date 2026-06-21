@@ -1,7 +1,7 @@
 import {
   Cpu, Network, Activity, Server, ShieldCheck, Database, Terminal,
   ChevronRight, Layout, MessageSquare, FileText, Globe, Radio, Key,
-  Box, GitMerge, ClipboardCheck, Fingerprint,
+  Box, GitMerge, ClipboardCheck, Fingerprint, type LucideIcon,
 } from "lucide-react";
 import { SiteNav } from "@/components/site/SiteNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -78,7 +78,7 @@ const ENTERPRISE_FEATURES = [
   { icon: Key, title: "AES-256-GCM Vault Encryption", desc: "Every PII token is encrypted at rest with AES-256-GCM, key derived via HKDF-SHA256. Master key is operator-controlled and never leaves process memory." },
 ];
 
-const ProductEyebrow = ({ icon: Icon, label }: { icon: any; label: string }) => (
+const ProductEyebrow = ({ icon: Icon, label }: { icon: LucideIcon; label: string }) => (
   <div className="flex items-center gap-2 text-primary">
     <Icon className="h-4 w-4" />
     <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">{label}</p>

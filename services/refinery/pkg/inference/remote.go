@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"sync"
 	"time"
 )
@@ -48,12 +51,39 @@ type RemoteScanner struct {
 	stopHealth chan struct{}
 }
 
+// isLoopbackSidecarURL reports whether rawURL resolves to a loopback address
+// (127.0.0.0/8, ::1, or the literal hostname "localhost").
+func isLoopbackSidecarURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 // NewRemoteScanner creates a scanner that hits the out-of-process SLM engine.
 // A background goroutine probes /health every 10 s and moves the circuit
 // from Open → HalfOpen → Closed as the sidecar recovers.
-func NewRemoteScanner(sidecarURL string) *RemoteScanner {
+//
+// OCULTAR's zero-egress guarantee depends on Tier 2 AI NER running on the
+// same host: ScanForPII sends raw, un-redacted text to sidecarURL. If
+// sidecarURL is not a loopback address, NewRemoteScanner refuses to start
+// unless OCU_ALLOW_REMOTE_SLM=true is explicitly set, so a misconfigured
+// SLM_SIDECAR_URL can't silently exfiltrate PII off-host.
+func NewRemoteScanner(sidecarURL string) (*RemoteScanner, error) {
 	if sidecarURL == "" {
 		sidecarURL = "http://localhost:8085"
+	}
+	if !isLoopbackSidecarURL(sidecarURL) {
+		if os.Getenv("OCU_ALLOW_REMOTE_SLM") != "true" {
+			return nil, fmt.Errorf("SLM_SIDECAR_URL %q is not a loopback address — OCULTAR's zero-egress guarantee requires Tier 2 AI NER to run on this host. Set OCU_ALLOW_REMOTE_SLM=true to override (only if you understand that raw, un-redacted text will be sent off-host before redaction)", sidecarURL)
+		}
+		log.Printf("[WARN] SLM_SIDECAR_URL %q is non-local and OCU_ALLOW_REMOTE_SLM=true — Tier 2 AI NER will send raw text off-host before PII redaction completes.", sidecarURL)
 	}
 	transport := &http.Transport{
 		MaxIdleConns:        50,
@@ -68,7 +98,7 @@ func NewRemoteScanner(sidecarURL string) *RemoteScanner {
 		stopHealth:      make(chan struct{}),
 	}
 	go s.runHealthLoop()
-	return s
+	return s, nil
 }
 
 // ScanForPII forwards the text payload to the SLM sidecar.

@@ -150,7 +150,9 @@ func (c *ClaudeAdapter) SendStream(ctx context.Context, messages []Message, opts
 	req.Header.Set("x-api-key", apiKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	streamClient := &http.Client{}
+	// Bounded so a hung upstream can't block the connection indefinitely; the
+	// request context still handles caller-side cancellation independently.
+	streamClient := &http.Client{Timeout: 120 * time.Second}
 	resp, err := streamClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("claude stream: %w", err)

@@ -173,7 +173,9 @@ func (g *GeminiAdapter) SendStream(ctx context.Context, messages []Message, opts
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := (&http.Client{}).Do(req)
+	// Bounded so a hung upstream can't block the connection indefinitely; the
+	// request context still handles caller-side cancellation independently.
+	resp, err := (&http.Client{Timeout: 120 * time.Second}).Do(req)
 	if err != nil {
 		return fmt.Errorf("gemini stream: %w", err)
 	}

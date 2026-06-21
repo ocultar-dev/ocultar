@@ -5,7 +5,9 @@ package vault_test
 // entity token rehydration, bulk seeding, and ListEntities.
 
 import (
+	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/ocultar-dev/ocultar/pkg/config"
@@ -195,6 +197,45 @@ func TestEntityRegistry_ListEntities(t *testing.T) {
 		t.Logf("  %s (%s): %v", rec.ID, rec.CanonicalName, rec.Variants)
 	}
 	t.Logf("✅ ListEntities returned %d records", len(records))
+}
+
+// TestEntityRegistry_ConcurrentRegistration_NoDuplicateIDs proves the
+// entity_id_seq-backed ID allocation is race-free: many goroutines registering
+// distinct canonical names of the same entity_type concurrently must each get
+// a unique sequential ID with no duplicates and no gaps-from-collision.
+func TestEntityRegistry_ConcurrentRegistration_NoDuplicateIDs(t *testing.T) {
+	v := openRegistryVault(t)
+
+	const n = 50
+	tokens := make([]string, n)
+	errs := make([]error, n)
+
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			tokens[i], errs[i] = v.RegisterEntity("PERSON", fmt.Sprintf("Person Number %d", i), nil)
+		}(i)
+	}
+	wg.Wait()
+
+	seen := make(map[string]int)
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("RegisterEntity goroutine %d: %v", i, err)
+		}
+		seen[tokens[i]]++
+	}
+	for tok, count := range seen {
+		if count > 1 {
+			t.Errorf("token %s was assigned %d times — ID generation race detected", tok, count)
+		}
+	}
+	if len(seen) != n {
+		t.Errorf("want %d distinct tokens, got %d", n, len(seen))
+	}
+	t.Logf("✅ %d concurrent registrations produced %d unique tokens, no duplicates", n, len(seen))
 }
 
 // TestEntityRegistry_LookupMiss verifies that an unregistered string returns not-found.

@@ -436,7 +436,7 @@ func (g *Gateway) extractActor(r *http.Request) string {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(config.Global.JWTSecret), nil
-	})
+	}, jwt.WithExpirationRequired())
 
 	if err != nil || !token.Valid {
 		return ""

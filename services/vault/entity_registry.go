@@ -45,12 +45,14 @@ func (p *duckdbProvider) RegisterEntity(entityType, canonicalName string, varian
 		return fmt.Sprintf("[%s]", existingID), nil
 	}
 
-	// Generate a new sequential ID: PERSON_1, PERSON_2, etc.
-	var count int64
-	p.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM canonical_entities WHERE entity_type = ?`, entityType,
-	).Scan(&count)
-	newID := fmt.Sprintf("%s_%d", entityType, count+1)
+	// Generate a new sequential ID: PERSON_1, PERSON_2, etc. via entity_id_seq —
+	// avoids the count-then-format race a SELECT COUNT(*) would have under
+	// concurrent RegisterEntity calls for the same entityType.
+	seq, err := p.nextEntityIDDuckDB(ctx, entityType)
+	if err != nil {
+		return "", err
+	}
+	newID := fmt.Sprintf("%s_%d", entityType, seq)
 
 	_, err = p.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO canonical_entities (id, entity_type, canonical_name) VALUES (?, ?, ?)`,
@@ -76,6 +78,55 @@ func (p *duckdbProvider) RegisterEntity(entityType, canonicalName string, varian
 
 	log.Printf("[entity-registry] Registered %s → [%s] with %d variant(s)", canonicalName, actualID, len(variants))
 	return fmt.Sprintf("[%s]", actualID), nil
+}
+
+// nextEntityIDDuckDB atomically allocates the next sequential ID for entityType
+// using the entity_id_seq table. Uses an explicit UPDATE-then-fallback-INSERT
+// transaction rather than a single upsert+RETURNING statement, because the
+// DuckDB driver (marcboeker/go-duckdb v1.8.5) returns the literal inserted
+// value from RETURNING after an ON CONFLICT DO UPDATE, not the actual
+// post-update column value — confirmed by direct testing. Correctness here
+// relies on duckdbProvider's single open connection (SetMaxOpenConns(1)):
+// holding the transaction holds that connection, so no other query can
+// interleave between the UPDATE/INSERT and the SELECT.
+func (p *duckdbProvider) nextEntityIDDuckDB(ctx context.Context, entityType string) (int64, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("[vault/duckdb] nextEntityID begin: %w", err)
+	}
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(ctx,
+		`UPDATE entity_id_seq SET next_val = next_val + 1 WHERE entity_type = ?`, entityType)
+	if err != nil {
+		return 0, fmt.Errorf("[vault/duckdb] nextEntityID update: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("[vault/duckdb] nextEntityID rows affected: %w", err)
+	}
+
+	var seq int64
+	if rows == 0 {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO entity_id_seq (entity_type, next_val) VALUES (?, 2)`, entityType,
+		); err != nil {
+			return 0, fmt.Errorf("[vault/duckdb] nextEntityID insert: %w", err)
+		}
+		seq = 1
+	} else {
+		if err := tx.QueryRowContext(ctx,
+			`SELECT next_val FROM entity_id_seq WHERE entity_type = ?`, entityType,
+		).Scan(&seq); err != nil {
+			return 0, fmt.Errorf("[vault/duckdb] nextEntityID select: %w", err)
+		}
+		seq--
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("[vault/duckdb] nextEntityID commit: %w", err)
+	}
+	return seq, nil
 }
 
 func (p *duckdbProvider) mergeVariantsDuckDB(ctx context.Context, canonicalID string, variants []string) error {
@@ -224,11 +275,14 @@ func (p *postgresProvider) RegisterEntity(entityType, canonicalName string, vari
 		return fmt.Sprintf("[%s]", existingID), nil
 	}
 
-	var count int64
-	p.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM canonical_entities WHERE entity_type = $1`, entityType,
-	).Scan(&count)
-	newID := fmt.Sprintf("%s_%d", entityType, count+1)
+	// Generate a new sequential ID via entity_id_seq — avoids the
+	// count-then-format race a SELECT COUNT(*) would have under concurrent
+	// RegisterEntity calls for the same entityType.
+	seq, err := p.nextEntityIDPG(ctx, entityType)
+	if err != nil {
+		return "", err
+	}
+	newID := fmt.Sprintf("%s_%d", entityType, seq)
 
 	_, err = p.db.ExecContext(ctx,
 		`INSERT INTO canonical_entities (id, entity_type, canonical_name)
@@ -254,6 +308,25 @@ func (p *postgresProvider) RegisterEntity(entityType, canonicalName string, vari
 
 	log.Printf("[entity-registry] Registered %s → [%s] with %d variant(s)", canonicalName, actualID, len(variants))
 	return fmt.Sprintf("[%s]", actualID), nil
+}
+
+// nextEntityIDPG atomically allocates the next sequential ID for entityType
+// using the entity_id_seq table. Unlike DuckDB, Postgres's RETURNING clause
+// after an ON CONFLICT DO UPDATE correctly returns the post-update row, so a
+// single upsert statement is sufficient — the row-level lock it takes for the
+// duration of the statement is what makes this safe under real concurrency.
+func (p *postgresProvider) nextEntityIDPG(ctx context.Context, entityType string) (int64, error) {
+	var seq int64
+	err := p.db.QueryRowContext(ctx,
+		`INSERT INTO entity_id_seq (entity_type, next_val) VALUES ($1, 2)
+		 ON CONFLICT (entity_type) DO UPDATE SET next_val = entity_id_seq.next_val + 1
+		 RETURNING next_val - 1`,
+		entityType,
+	).Scan(&seq)
+	if err != nil {
+		return 0, fmt.Errorf("[vault/postgres] nextEntityID: %w", err)
+	}
+	return seq, nil
 }
 
 func (p *postgresProvider) mergeVariantsPG(ctx context.Context, canonicalID string, variants []string) error {

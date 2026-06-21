@@ -64,11 +64,27 @@ func newDuckDBProvider(vaultPath string) (*duckdbProvider, error) {
 		return nil, fmt.Errorf("entity_variants index DDL: %w", err)
 	}
 
+	// entity_id_seq backs atomic per-type ID generation in RegisterEntity
+	// (see nextEntityIDDuckDB) — avoids the count-then-format race that a
+	// SELECT COUNT(*) approach would have under concurrent registrations.
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS entity_id_seq (
+			entity_type VARCHAR PRIMARY KEY,
+			next_val    BIGINT NOT NULL
+		)`)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("entity_id_seq DDL: %w", err)
+	}
+
 	// Fix DuckDB Concurrency: limit to a single open connection to prevent "database is locked" errors
 	db.SetMaxOpenConns(1)
 
 	var count int64
-	db.QueryRow(`SELECT COUNT(*) FROM vault`).Scan(&count)
+	if err := db.QueryRow(`SELECT COUNT(*) FROM vault`).Scan(&count); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("count existing vault rows: %w", err)
+	}
 
 	p := &duckdbProvider{db: db}
 	p.count.Store(count)

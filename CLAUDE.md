@@ -45,7 +45,7 @@ go run ./apps/slm-engine/main.go
 # Start the Sombra Gateway (port 8086)
 go run ./apps/sombra
 
-# Frontend (apps/dashboard or apps/web)
+# Frontend (apps/web)
 npm run dev
 npm run build
 ```
@@ -114,6 +114,7 @@ OCULTAR primarily uses **Doppler** for secret management. If running manually, c
 | `OCU_AUDIT_LOG_PATH` | Audit log file path (default: `audit.log` alongside vault file) |
 | `SLACK_SIGNING_SECRET` | Slack app signing secret for HMAC-SHA256 verification of incoming Slack events. Required when using the Slack connector; if unset, Sombra rejects all Slack webhook requests with HTTP 500. |
 | `OCU_SOMBRA_ALLOW_DEGRADED_NER` | Opt-out from Sombra's fail-closed default. Sombra blocks requests (5xx) if the Tier 2 SLM sidecar is unreachable, since Tier 1 regex alone cannot catch names/addresses before they reach a third-party model provider. Set to `true` only if your deployment explicitly prefers availability over detection completeness during SLM outages. |
+| `OCU_ALLOW_REMOTE_SLM` | Opt-in required for a non-loopback `SLM_SIDECAR_URL`. By default, `NewRemoteScanner` refuses to start if the sidecar URL doesn't resolve to `localhost`/`127.0.0.1`/`::1`, since Tier 2 AI NER sends raw, un-redacted text to that URL — a misconfigured remote address would silently violate the zero-egress guarantee. Set to `true` only if you have deliberately deployed the SLM sidecar on a separate, trusted host. |
 
 **Deprecated:** `TIER2_ENGINE` is a legacy alias for `SLM_ADAPTER` — the server logs `[DEPRECATED]` on startup if it is set. Use `SLM_ADAPTER` instead.
 
@@ -188,21 +189,18 @@ Pre-seed entities via `RegisterEntity` before processing documents where identit
 
 ### Frontend
 
-`apps/dashboard` and `apps/web` are independent Vite + React 19 + Tailwind CSS 4 apps. They are served separately from the Go backend.
+`apps/web` is an independent Vite + React 19 + Tailwind CSS 4 app, served separately from the Go backend.
 
 | App | Dev port | API target |
 |---|---|---|
 | `apps/web` | `8080` (Vite) | Refinery HTTP on `8080` (same port — production build served by Go) |
-| `apps/dashboard` | `3030` (Vite) | Refinery HTTP on `8090` (proxied via Vite `/api` prefix) |
 
 ```bash
 # apps/web
 cd apps/web && npm run dev        # → http://localhost:8080
-
-# apps/dashboard
-cd apps/dashboard && npm run dev  # → http://localhost:3030
-# requires Refinery running on :8090
 ```
+
+**`apps/dashboard` is internal/private** — like `agents/`, `business/`, and `demo/`, its source is not part of the public OSS tree (no `src/` is committed; only local build output may exist on a given machine). Treat it as out of scope for external contributors; do not point external contributors at a dev workflow for it.
 
 ### What NOT to Do
 

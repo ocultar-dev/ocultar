@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	htmltmpl "html/template"
@@ -184,14 +185,21 @@ func main() {
 	case "none", "disabled":
 		log.Printf("[INFO] Tier 2 AI deactivated (NoopAIScanner active)")
 	default:
-		scanner = inference.NewRemoteScanner(sidecarURL)
+		remoteScanner, err := inference.NewRemoteScanner(sidecarURL)
+		if err != nil {
+			log.Fatalf("[FATAL] %v", err)
+		}
+		scanner = remoteScanner
 		log.Printf("[INFO] Tier 2 AI active via privacy-filter sidecar: %s", sidecarURL) //nolint:gosec // G706: sidecarURL is an operator-configured value, not user input
 		eng.SetAIScanner(scanner)
 	}
 
 	// Register per-domain sidecars from config (e.g. fr-finance → http://localhost:8087).
-	for domain, url := range config.Global.Tier2DomainSidecars {
-		ds := inference.NewRemoteScanner(url)
+	for domain, sidecarURL := range config.Global.Tier2DomainSidecars {
+		ds, err := inference.NewRemoteScanner(sidecarURL)
+		if err != nil {
+			log.Fatalf("[FATAL] %v", err)
+		}
 		eng.SetDomainScanner(domain, ds)
 	}
 	if len(config.Global.Tier2DomainSidecars) > 0 {
@@ -327,7 +335,50 @@ func corsHandler(h http.Handler) http.Handler {
 	})
 }
 
+// revealRateLimiter is a simple in-memory sliding-window limiter for
+// /api/reveal: it bounds how many tokens a given Authorization header value
+// can decrypt per window, so a leaked or misused OCU_AUDITOR_TOKEN can't be
+// used to mass-extract the vault in a single burst.
+type revealRateLimiter struct {
+	mu       sync.Mutex
+	limit    int
+	window   time.Duration
+	requests map[string][]time.Time
+}
+
+func newRevealRateLimiter(limit int, window time.Duration) *revealRateLimiter {
+	return &revealRateLimiter{
+		limit:    limit,
+		window:   window,
+		requests: make(map[string][]time.Time),
+	}
+}
+
+func (rl *revealRateLimiter) allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-rl.window)
+	kept := rl.requests[key][:0]
+	for _, t := range rl.requests[key] {
+		if t.After(cutoff) {
+			kept = append(kept, t)
+		}
+	}
+	if len(kept) >= rl.limit {
+		rl.requests[key] = kept
+		return false
+	}
+	rl.requests[key] = append(kept, now)
+	return true
+}
+
 func startServer(eng *refinery.Refinery, servePort string) {
+	// 30 reveal calls per minute per auditor token — generous for legitimate
+	// dashboard use, tight enough to block bulk vault extraction via a leaked token.
+	revealLimiter := newRevealRateLimiter(30, time.Minute)
+
 	// Serve static files from the "dashboard" directory if it exists, otherwise root
 	staticDir := "dashboard"
 	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
@@ -1128,6 +1179,12 @@ func startServer(eng *refinery.Refinery, servePort string) {
 		if authHeader != "Bearer "+auditorToken {
 			eng.AuditLogger.Log("UNKNOWN", "failed_reveal_auth", "N/A", "401 Unauthorized")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !revealLimiter.allow(authHeader) {
+			eng.AuditLogger.Log("auditor", "reveal_rate_limited", "N/A", "429 Too Many Requests")
+			http.Error(w, "Too many reveal requests — slow down.", http.StatusTooManyRequests)
 			return
 		}
 

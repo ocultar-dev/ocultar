@@ -84,6 +84,19 @@ func newPostgresProvider(dsn string) (*postgresProvider, error) {
 		return nil, fmt.Errorf("[vault/postgres] entity_variants index DDL: %w", err)
 	}
 
+	// entity_id_seq backs atomic per-type ID generation in RegisterEntity
+	// (see nextEntityIDPG) — avoids the count-then-format race that a
+	// SELECT COUNT(*) approach would have under concurrent registrations.
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS entity_id_seq (
+			entity_type TEXT PRIMARY KEY,
+			next_val    BIGINT NOT NULL
+		)`)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("[vault/postgres] entity_id_seq DDL: %w", err)
+	}
+
 	p := &postgresProvider{db: db}
 	log.Printf("[vault/postgres] Connected to centralized vault.")
 	return p, nil

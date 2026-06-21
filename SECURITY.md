@@ -19,7 +19,7 @@ We take the security of Ocultar seriously. If you believe you have found a secur
 1.  **Report**: Send an email to security@getki.ai with a description of the vulnerability.
 2.  **Acknowledge**: We will acknowledge receipt of your report within 48 hours.
 3.  **Investigate**: We will investigate the issue and may contact you for further information.
-4.  **Fix**: We will work on a fix and coordinate a release date with you.
+4.  **Fix**: We will work on a fix and coordinate a release date with you. Target timelines: **Critical/High severity — fix within 30 days of confirmation**; **Medium/Low severity — fix within 90 days**. We will communicate proactively if a fix needs more time than this.
 5.  **Release**: We will release the fix and credit you for the discovery (unless you prefer to remain anonymous).
 
 ### Guidelines

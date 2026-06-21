@@ -121,7 +121,10 @@ func main() {
 	if sidecarURL == "" {
 		sidecarURL = "http://localhost:8085"
 	}
-	scanner := inference.NewRemoteScanner(sidecarURL)
+	scanner, err := inference.NewRemoteScanner(sidecarURL)
+	if err != nil {
+		log.Fatalf("[FATAL] %v", err)
+	}
 	eng.SetAIScanner(scanner)
 	log.Printf("[INFO] Tier 2 AI (Remote Sidecar) configured at %s", sidecarURL)
 

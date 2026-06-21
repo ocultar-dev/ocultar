@@ -192,10 +192,11 @@ The canonical source of truth is `internal/pii/registry.go`. Every entity type i
 
 ```go
 {
-    Name:    "FR_NIR",                          // canonical token prefix: [FR_NIR_xxxx]
-    Pattern: regexp.MustCompile(`\b[12]\d{14}\b`),
-    Score:   2,                                 // higher score wins tie-breaks
-    Validator: validateLuhn,                    // optional; nil if no checksum
+    Type:      "FR_NIR",                              // canonical token prefix: [FR_NIR_xxxx]
+    Pattern:   regexp.MustCompile(`\b[12]\d{14}\b`),
+    Validator: ValNone,                                // or a checksum method, e.g. ValLuhn
+    MinLength: 15,
+    Normalization: false,                              // true if input may contain spaces/dashes to strip first
 },
 ```
 
@@ -210,7 +211,7 @@ The canonical source of truth is `internal/pii/registry.go`. Every entity type i
 regulatory framework in the coverage registry.
 
 **Step 4 — Add a fixture** to the relevant file in `tests/regulatory_coverage/fixtures/`
-(or create a new fixture file for a new jurisdiction).
+(in the `kii` repo; or create a new fixture file for a new jurisdiction).
 
 ---
 
@@ -219,22 +220,24 @@ regulatory framework in the coverage registry.
 New frameworks (e.g. a new EU member-state law or a US state privacy act) require changes
 in three places:
 
-1. **`internal/pii/registry.go`** — ensure all entity types required by the framework
-   have entries. Add comments citing the specific article or safe-harbour identifier.
+1. **`internal/pii/registry.go`** (this repo) — ensure all entity types required by the
+   framework have entries. Add comments citing the specific article or safe-harbour
+   identifier.
 
-2. **`tests/regulatory_coverage/coverage_test.go`** — add a `FrameworkMinimum` entry
-   specifying the minimum number of required types that must pass for the framework to be
-   considered covered:
+2. **`tests/regulatory_coverage/coverage_test.go`** (in the `kii` repo) — add a
+   `FrameworkMinimum` entry specifying the minimum number of required types that must
+   pass for the framework to be considered covered:
 
    ```go
    {Framework: "MY_LAW", MinRequired: 5},
    ```
 
-3. **`tests/regulatory_coverage/fixtures/`** — add a `.json` fixture file with at least
-   one realistic (but clearly synthetic) PII sample per required entity type.
+3. **`tests/regulatory_coverage/fixtures/`** (in the `kii` repo) — add a `.json` fixture
+   file with at least one realistic (but clearly synthetic) PII sample per required
+   entity type.
 
-Run `CGO_ENABLED=1 go test ./tests/regulatory_coverage/...` to confirm all framework
-minimums pass before submitting the PR.
+From a `kii` checkout, run `CGO_ENABLED=1 go test ./tests/regulatory_coverage/...` to
+confirm all framework minimums pass before submitting the PR.
 
 ---
 

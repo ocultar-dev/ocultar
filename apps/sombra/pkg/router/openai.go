@@ -152,8 +152,9 @@ func (o *OpenAIAdapter) SendStream(ctx context.Context, messages []Message, opts
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	// No client-level timeout for streaming; context handles cancellation.
-	streamClient := &http.Client{}
+	// Bounded so a hung upstream can't block the connection indefinitely; the
+	// request context still handles caller-side cancellation independently.
+	streamClient := &http.Client{Timeout: 120 * time.Second}
 	resp, err := streamClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("openai stream: %w", err)

@@ -4,11 +4,62 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestNewRemoteScanner_RefusesNonLoopbackByDefault(t *testing.T) {
+	t.Setenv("OCU_ALLOW_REMOTE_SLM", "")
+
+	scanner, err := NewRemoteScanner("http://10.0.0.5:8085")
+	if err == nil {
+		t.Fatal("expected error for non-loopback sidecar URL, got nil")
+	}
+	if scanner != nil {
+		t.Error("expected nil scanner on rejected non-loopback URL")
+	}
+}
+
+func TestNewRemoteScanner_AllowsNonLoopbackWithOptIn(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	os.Setenv("OCU_ALLOW_REMOTE_SLM", "true")
+	defer os.Unsetenv("OCU_ALLOW_REMOTE_SLM")
+
+	// 10.x is non-loopback; the opt-out should let it through even though
+	// this test still talks to a loopback httptest server in practice — what
+	// matters is that the URL is never rejected once the override is set.
+	scanner, err := NewRemoteScanner("http://10.0.0.5:8085")
+	if err != nil {
+		t.Fatalf("expected no error with OCU_ALLOW_REMOTE_SLM=true, got %v", err)
+	}
+	defer scanner.Stop()
+}
+
+func TestIsLoopbackSidecarURL(t *testing.T) {
+	cases := []struct {
+		url  string
+		want bool
+	}{
+		{"http://localhost:8085", true},
+		{"http://127.0.0.1:8085", true},
+		{"http://[::1]:8085", true},
+		{"http://10.0.0.5:8085", false},
+		{"http://slm.example.com:8085", false},
+		{"not a url", false},
+	}
+	for _, c := range cases {
+		if got := isLoopbackSidecarURL(c.url); got != c.want {
+			t.Errorf("isLoopbackSidecarURL(%q) = %v, want %v", c.url, got, c.want)
+		}
+	}
+}
 
 func TestRemoteScanner_ScanForPII(t *testing.T) {
 	tests := []struct {
@@ -50,7 +101,10 @@ func TestRemoteScanner_ScanForPII(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			scanner := NewRemoteScanner(srv.URL)
+			scanner, err := NewRemoteScanner(srv.URL)
+			if err != nil {
+				t.Fatalf("NewRemoteScanner: %v", err)
+			}
 			defer scanner.Stop()
 
 			result, err := scanner.ScanForPII("Alice Johnson email alice@example.com")
@@ -78,7 +132,10 @@ func TestRemoteScanner_IsAvailable_InitiallyTrue(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner := NewRemoteScanner(srv.URL)
+	scanner, err := NewRemoteScanner(srv.URL)
+	if err != nil {
+		t.Fatalf("NewRemoteScanner: %v", err)
+	}
 	defer scanner.Stop()
 
 	if !scanner.IsAvailable() {
@@ -95,7 +152,10 @@ func TestRemoteScanner_CircuitOpensAfterConsecutiveFailures(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner := NewRemoteScanner(srv.URL)
+	scanner, err := NewRemoteScanner(srv.URL)
+	if err != nil {
+		t.Fatalf("NewRemoteScanner: %v", err)
+	}
 	defer scanner.Stop()
 
 	for i := 0; i < failureThreshold; i++ {
@@ -116,7 +176,10 @@ func TestRemoteScanner_CircuitRejectsWhenOpen(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner := NewRemoteScanner(srv.URL)
+	scanner, err := NewRemoteScanner(srv.URL)
+	if err != nil {
+		t.Fatalf("NewRemoteScanner: %v", err)
+	}
 	defer scanner.Stop()
 
 	// Trip the circuit
@@ -125,7 +188,7 @@ func TestRemoteScanner_CircuitRejectsWhenOpen(t *testing.T) {
 	}
 
 	// Next call should fail fast without hitting the server
-	_, err := scanner.ScanForPII("should fail fast")
+	_, err = scanner.ScanForPII("should fail fast")
 	if err == nil {
 		t.Error("expected error when circuit is open, got nil")
 	}
@@ -158,7 +221,10 @@ func TestRemoteScanner_HalfOpen_OnlyOneProbeAtATime(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner := NewRemoteScanner(srv.URL)
+	scanner, err := NewRemoteScanner(srv.URL)
+	if err != nil {
+		t.Fatalf("NewRemoteScanner: %v", err)
+	}
 	defer scanner.Stop()
 
 	// Force circuit to half-open by manipulating internal state
@@ -196,7 +262,10 @@ func TestRemoteScanner_HalfOpen_TransitionsToClosedAfterSuccesses(t *testing.T) 
 	}))
 	defer srv.Close()
 
-	scanner := NewRemoteScanner(srv.URL)
+	scanner, err := NewRemoteScanner(srv.URL)
+	if err != nil {
+		t.Fatalf("NewRemoteScanner: %v", err)
+	}
 	defer scanner.Stop()
 
 	// Force to HalfOpen
@@ -228,7 +297,10 @@ func TestRemoteScanner_CircuitStateName(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	scanner := NewRemoteScanner(srv.URL)
+	scanner, err := NewRemoteScanner(srv.URL)
+	if err != nil {
+		t.Fatalf("NewRemoteScanner: %v", err)
+	}
 	defer scanner.Stop()
 
 	states := []struct {
