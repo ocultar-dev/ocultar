@@ -53,8 +53,7 @@ func getSalt() string {
 func getMasterKey() []byte {
 	keyMaterial := os.Getenv("OCU_MASTER_KEY")
 	if keyMaterial == "" {
-		log.Printf("[WARN] OCU_MASTER_KEY is not set — using insecure dev key. Never deploy this to production.")
-		keyMaterial = "default-dev-key-32-chars-long-!!!"
+		log.Fatalf("[FATAL] OCU_MASTER_KEY is required but not set.")
 	}
 
 	salt := []byte(getSalt())
@@ -360,6 +359,15 @@ func startServer(eng *refinery.Refinery, servePort string) {
 	})
 
 	http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+		auditorToken := os.Getenv("OCU_AUDITOR_TOKEN")
+		if auditorToken == "" {
+			http.Error(w, "Unauthorized: OCU_AUDITOR_TOKEN is not configured on this server.", http.StatusForbidden)
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer "+auditorToken {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(config.Global) //nolint:gosec // G117: localhost admin dashboard only; TODO CSO: strip JWTSecret before encoding
 	})
@@ -471,6 +479,15 @@ func startServer(eng *refinery.Refinery, servePort string) {
 	})
 
 	http.HandleFunc("/api/config/regex", func(w http.ResponseWriter, r *http.Request) {
+		auditorToken := os.Getenv("OCU_AUDITOR_TOKEN")
+		if auditorToken == "" {
+			http.Error(w, "Unauthorized: OCU_AUDITOR_TOKEN is not configured on this server.", http.StatusForbidden)
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer "+auditorToken {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 		setLocalhostCORS(w, r); w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE"); w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		switch r.Method {
 		case http.MethodPost:
@@ -524,6 +541,15 @@ func startServer(eng *refinery.Refinery, servePort string) {
 	})
 
 	http.HandleFunc("/api/config/dictionary", func(w http.ResponseWriter, r *http.Request) {
+		auditorToken := os.Getenv("OCU_AUDITOR_TOKEN")
+		if auditorToken == "" {
+			http.Error(w, "Unauthorized: OCU_AUDITOR_TOKEN is not configured on this server.", http.StatusForbidden)
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer "+auditorToken {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 		setLocalhostCORS(w, r); w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE"); w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		switch r.Method {
 		case http.MethodPost:
@@ -703,6 +729,15 @@ func startServer(eng *refinery.Refinery, servePort string) {
 	})
 
 	http.HandleFunc("/api/vault/migrate", func(w http.ResponseWriter, r *http.Request) {
+		auditorToken := os.Getenv("OCU_AUDITOR_TOKEN")
+		if auditorToken == "" {
+			http.Error(w, "Unauthorized: OCU_AUDITOR_TOKEN is not configured on this server.", http.StatusForbidden)
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer "+auditorToken {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -825,15 +860,16 @@ func startServer(eng *refinery.Refinery, servePort string) {
 		}
 
 		// Robust file lookup for demo/pilot environments
-		datasetFile := req.DatasetPath
+		safePath := filepath.Base(req.DatasetPath)
+		datasetFile := safePath
 		if _, err := os.Stat(datasetFile); os.IsNotExist(err) {
 			// Try root-relative if running from services/refinery
-			altPath := filepath.Join("../../", req.DatasetPath)
+			altPath := filepath.Join("../../", safePath)
 			if _, err := os.Stat(altPath); err == nil {
 				datasetFile = altPath
 			} else {
 				// Try one level up just in case
-				altPath = filepath.Join("../", req.DatasetPath)
+				altPath = filepath.Join("../", safePath)
 				if _, err := os.Stat(altPath); err == nil {
 					datasetFile = altPath
 				}

@@ -33,6 +33,11 @@ COPY --from=builder /workspace/sombra /app/sombra
 # Copy config from refinery
 COPY --from=builder /workspace/services/refinery/configs/ /app/configs/
 
+# Create a non-root user
+RUN useradd -m -u 1000 -U -s /bin/sh ocultar
+RUN chown -R ocultar:ocultar /app
+USER ocultar
+
 # Default port
 EXPOSE 8081
 

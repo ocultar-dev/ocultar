@@ -21,6 +21,11 @@ WORKDIR /app
 COPY --from=builder /workspace/ocultar-refinery /app/ocultar-refinery
 COPY --from=builder /workspace/services/refinery/configs/ /app/configs/
 
+# Create a non-root user
+RUN useradd -m -u 1000 -U -s /bin/sh ocultar
+RUN chown -R ocultar:ocultar /app
+USER ocultar
+
 EXPOSE 8080
 
 ENTRYPOINT ["/app/ocultar-refinery", "--serve", "8080"]

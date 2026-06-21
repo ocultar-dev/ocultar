@@ -39,6 +39,11 @@ COPY --from=builder /workspace/services/refinery/configs/ /app/configs/
 # Copy dashboard assets
 COPY --from=dashboard-builder /dashboard/dist/ /app/dashboard/
 
+# Create a non-root user
+RUN useradd -m -u 1000 -U -s /bin/sh ocultar
+RUN chown -R ocultar:ocultar /app
+USER ocultar
+
 EXPOSE 8081
 EXPOSE 9090
 

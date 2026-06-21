@@ -26,6 +26,11 @@ COPY --from=builder /workspace/slm-engine /app/slm-engine
 ENV SLM_MODEL_PATH=/app/models/qwen-1.5b-q4_k_m.gguf
 ENV PORT=8085
 
+# Create a non-root user
+RUN useradd -m -u 1000 -U -s /bin/sh ocultar
+RUN chown -R ocultar:ocultar /app
+USER ocultar
+
 EXPOSE 8085
 
 ENTRYPOINT ["/app/slm-engine"]
