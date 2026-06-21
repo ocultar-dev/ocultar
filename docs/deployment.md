@@ -74,14 +74,14 @@ Expected response:
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `OCU_MASTER_KEY` | Yes (production) | insecure dev key | 32+ byte hex key material for HKDF |
+| `OCU_MASTER_KEY` | Yes | — (server refuses to start if unset) | 32+ byte hex key material for HKDF |
 | `OCU_SALT` | Yes (production) | built-in default | Per-deployment HKDF salt |
 | `OCU_AUDITOR_TOKEN` | Yes | — | Bearer token for `/api/reveal` and `/api/entities` |
 | `OCU_VAULT_PATH` | No | `vault.db` | Path to DuckDB vault file |
 | `SLM_SIDECAR_URL` | No | `http://localhost:8085` | Tier 2 NER sidecar endpoint |
 | `SLM_ADAPTER` | No | `privacy-filter` | Sidecar protocol: `privacy-filter` or `openai-chat` |
 
-If `OCU_MASTER_KEY` or `OCU_SALT` are not set, Ocultar starts with insecure development defaults and logs a warning. Never run in production without setting both.
+If `OCU_MASTER_KEY` is not set, the refinery logs `[FATAL]` and refuses to start — it no longer falls back to a hardcoded key. If `OCU_SALT` is unset, Ocultar still starts with a built-in default salt and logs a warning; never run in production without setting it.
 
 ---
 

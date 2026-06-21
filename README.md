@@ -158,7 +158,7 @@ privacy-filter protocol (default).
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `OCU_MASTER_KEY` | Yes (production) | insecure dev key | 32+ byte AES key material for HKDF |
+| `OCU_MASTER_KEY` | Yes | — (server refuses to start if unset) | 32+ byte AES key material for HKDF |
 | `OCU_SALT` | Yes (production) | built-in default | Per-deployment HKDF salt |
 | `OCU_AUDITOR_TOKEN` | Yes | — | Bearer token for `/api/reveal` and `/api/entities` |
 | `OCU_VAULT_PATH` | No | `vault.db` | DuckDB vault file path |

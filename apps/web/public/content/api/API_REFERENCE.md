@@ -620,6 +620,8 @@ curl -F "file=@my_data.csv" http://localhost:9090/api/refine/file > cleaned.csv
 
 ---
 
+> **Auth:** Sections 6.3–6.9 require `Authorization: Bearer <OCU_AUDITOR_TOKEN>`. They return `403` if `OCU_AUDITOR_TOKEN` is not configured on the server, and `401` if the header is missing or doesn't match. (6.10–6.11 are read-only and remain unauthenticated.)
+
 ### 6.3 `GET /api/config`
 
 Returns the full current configuration (`config.yaml` state).

@@ -217,7 +217,7 @@ Sombra enforces JWT-based actor identity on all data-handling endpoints (`/query
 | On missing/invalid token | `401 Unauthorized` — both endpoints fail closed |
 | On missing secret (dev fallback) | Raw Bearer string accepted as actor — **insecure, dev only** |
 
-**Production requirement:** `OCU_JWT_SECRET` must be set. Sombra logs `[WARN] OCU_JWT_SECRET is not set` at startup when running in insecure mode. Generate with `openssl rand -hex 32` and inject via Doppler or AWS Secrets Manager.
+**Production requirement:** `OCU_JWT_SECRET` must be set. Sombra logs `[WARN] OCU_JWT_SECRET is not set` at startup when running in insecure mode. Generate with `openssl rand -hex 32` and inject via Doppler or AWS Secrets Manager. The shipped `apps/sombra/docker-compose.yml` enforces this and `SLACK_SIGNING_SECRET` at the compose level (`${OCU_JWT_SECRET:?...}`) — the stack refuses to start if either is unset, even though the Go binary itself would still boot in insecure dev mode if run outside compose.
 
 The `actor` value extracted from the JWT is threaded through the audit log, giving every vault redaction and rehydration event a cryptographically attested identity.
 
@@ -229,7 +229,7 @@ The `actor` value extracted from the JWT is threaded through the audit log, givi
 
 `OCU_MASTER_KEY` is read from the process environment at startup. It is passed through HKDF-SHA256 (described in Section 4) and is never stored, logged, or written to disk. The derived key exists only in process memory.
 
-In development mode (`--dev` flag), a hardcoded insecure default is used with an explicit log warning. Production deployments must supply `OCU_MASTER_KEY`; the proxy calls `log.Fatalf` and refuses to start without it when not in dev mode.
+There is no insecure fallback: if `OCU_MASTER_KEY` is unset, the refinery calls `log.Fatalf` and refuses to start, in every mode. The shipped `docker-compose.yml` files for the refinery and Sombra gateway use the compose-level `${OCU_MASTER_KEY:?must be set}` syntax to fail before the container even starts.
 
 ### Key rotation
 
