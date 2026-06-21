@@ -19,11 +19,13 @@ import (
 
 // mockModelAdapter simulates an AI backend that just echoes the prompt
 type mockModelAdapter struct {
-	name string
+	name   string
+	called bool
 }
 
 func (m *mockModelAdapter) Name() string { return m.name }
 func (m *mockModelAdapter) Send(ctx context.Context, messages []router.Message, opts router.ModelOpts) (string, error) {
+	m.called = true
 	prompt := ""
 	if len(messages) > 0 {
 		prompt = messages[len(messages)-1].Content

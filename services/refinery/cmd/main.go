@@ -371,8 +371,12 @@ func startServer(eng *refinery.Refinery, servePort string) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+		safeConfig := config.Global
+		safeConfig.JWTSecret = ""
+		safeConfig.CRMApiKey = ""
+		safeConfig.PostgresDSN = ""
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(config.Global) //nolint:gosec // G117: localhost admin dashboard only; TODO CSO: strip JWTSecret before encoding
+		json.NewEncoder(w).Encode(safeConfig)
 	})
 
 	http.HandleFunc("/api/system/status", func(w http.ResponseWriter, r *http.Request) {

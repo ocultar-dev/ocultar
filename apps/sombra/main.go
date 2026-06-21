@@ -72,6 +72,16 @@ func main() {
 
 	eng := refinery.NewRefinery(v, masterKey)
 
+	// Fail-closed by default: if the SLM sidecar is unreachable, block the request
+	// rather than silently degrading to Tier 1-only detection (which cannot catch
+	// names/addresses). Operators who knowingly want availability over completeness
+	// can opt out explicitly.
+	if os.Getenv("OCU_SOMBRA_ALLOW_DEGRADED_NER") == "true" {
+		log.Printf("[WARN] OCU_SOMBRA_ALLOW_DEGRADED_NER is set — Sombra will degrade to Tier 1-only detection if the SLM sidecar is unavailable, instead of failing closed. Names/addresses may not be redacted during SLM outages.")
+	} else {
+		eng.FailClosedOnSLMError = true
+	}
+
 	// Initialize Tier 2 SLM Scanner if sidecar URL is configured
 	sidecarURL := os.Getenv("SLM_SIDECAR_URL")
 	if sidecarURL == "" {

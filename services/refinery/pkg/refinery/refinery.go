@@ -129,10 +129,13 @@ type Refinery struct {
 	// Useful for high-throughput batch jobs where speed takes priority over AI recall.
 	SkipDeepScan bool
 	// FailClosedOnSLMError makes SLM failures propagate as hard errors instead of
-	// degrading gracefully to Tier 1. Set to true in proxy mode (security requirement:
-	// an unreachable SLM must block the request rather than risk PII leaking names).
-	// Defaults to false so the /api/refine preview endpoint stays responsive even
-	// when the SLM sidecar is not running.
+	// degrading gracefully to Tier 1. Set to true in proxy mode and, by default, in
+	// Sombra (security requirement: an unreachable SLM must block the request rather
+	// than risk PII — especially names/addresses, which only Tier 2 catches — reaching
+	// a third-party model provider). Sombra exposes OCU_SOMBRA_ALLOW_DEGRADED_NER as an
+	// explicit opt-out for deployments that prefer availability over completeness.
+	// Defaults to false at the struct level so the /api/refine preview endpoint stays
+	// responsive even when the SLM sidecar is not running.
 	FailClosedOnSLMError bool
 	VaultCount   *atomic.Int64
 	AuditLogger  AuditLogger

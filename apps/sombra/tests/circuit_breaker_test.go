@@ -2,6 +2,7 @@ package connector_test
 
 import (
 	"bytes"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -15,24 +16,37 @@ import (
 	"github.com/ocultar-dev/ocultar/vault"
 )
 
-// TestCircuitBreaker_SLMUnavailable_TierOneFallback verifies that when the Tier 2
-// SLM sidecar is unreachable, the gateway degrades gracefully to Tier 1 only —
-// it must still return 200 OK and must not hang or return a 5xx error.
-//
-// The refinery is initialised without an SLM URL, which simulates the SLM being
-// absent. Tier 1 deterministic detection must still run and mask any PII it finds.
-func TestCircuitBreaker_SLMUnavailable_TierOneFallback(t *testing.T) {
+// erroringAIScanner simulates an unreachable SLM sidecar: every call fails.
+type erroringAIScanner struct{}
+
+func (erroringAIScanner) ScanForPII(text string) (map[string][]string, error) {
+	return nil, fmt.Errorf("simulated SLM sidecar unavailable")
+}
+func (erroringAIScanner) CheckHealth(host string) {}
+
+// IsAvailable reports true even though every ScanForPII call fails: this
+// mock simulates a configured-but-unreachable sidecar (e.g. connection
+// refused), which is the scenario that actually reaches the
+// FailClosedOnSLMError branch. A scanner that reports IsAvailable() ==
+// false is skipped before it's ever called (see refinery.go's activeScanner
+// gating), so it would never exercise this code path.
+func (erroringAIScanner) IsAvailable() bool        { return true }
+func (erroringAIScanner) SetDomain(domain string)  {}
+func (erroringAIScanner) CircuitStateName() string { return "open" }
+
+func newCircuitBreakerTestGateway(t *testing.T, failClosed bool) (*handler.Gateway, *mockModelAdapter) {
+	t.Helper()
 	v, err := vault.New(config.Settings{VaultBackend: "duckdb"}, "")
 	if err != nil {
 		t.Fatalf("create vault: %v", err)
 	}
-	defer v.Close()
+	t.Cleanup(func() { v.Close() })
 
 	masterKey := make([]byte, 32)
 	config.InitDefaults()
-
-	// Refinery with no SLM URL — Tier 2 circuit breaker will be open from the start.
 	eng := refinery.NewRefinery(v, masterKey)
+	eng.SetAIScanner(erroringAIScanner{})
+	eng.FailClosedOnSLMError = failClosed
 
 	upstream := &mockModelAdapter{name: "mock-model"}
 	r := router.New("mock-model", []string{"mock-internal"})
@@ -42,7 +56,11 @@ func TestCircuitBreaker_SLMUnavailable_TierOneFallback(t *testing.T) {
 	gw.RegisterConnector(connector.NewFileConnector("file", connector.DataPolicy{
 		AllowedModels: []string{"mock-model"},
 	}))
+	return gw, upstream
+}
 
+func doCircuitBreakerRequest(t *testing.T, gw *handler.Gateway) *httptest.ResponseRecorder {
+	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	mw.WriteField("connector", "file")
@@ -58,10 +76,37 @@ func TestCircuitBreaker_SLMUnavailable_TierOneFallback(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	gw.HandleQuery(rr, req)
+	return rr
+}
 
-	// Must succeed — Tier 1 should have handled this without the SLM.
+// TestFailClosed_SLMUnavailable_BlocksByDefault verifies Sombra's default posture:
+// when the Tier 2 SLM sidecar errors, the request must be blocked (5xx) and the
+// upstream model must never be called. This is the default because Tier 1 alone
+// cannot catch names/addresses, and Sombra forwards content to third-party model
+// providers — letting that traffic through ungated on a Tier 2 failure would be a
+// real PII leak to an external party, not just a degraded preview.
+func TestFailClosed_SLMUnavailable_BlocksByDefault(t *testing.T) {
+	gw, upstream := newCircuitBreakerTestGateway(t, true)
+	rr := doCircuitBreakerRequest(t, gw)
+
+	if rr.Code == http.StatusOK {
+		t.Errorf("fail-closed violation: got 200 OK despite SLM failure; body: %s", rr.Body.String())
+	}
+	if upstream.called {
+		t.Error("fail-closed violation: upstream model was called despite SLM failure")
+	}
+}
+
+// TestCircuitBreaker_SLMUnavailable_DegradedNEROptIn verifies the explicit opt-out:
+// when OCU_SOMBRA_ALLOW_DEGRADED_NER is set, operators have knowingly chosen
+// availability over completeness, and the gateway falls back to Tier 1-only
+// detection — returning 200 OK without hanging or hard-failing.
+func TestCircuitBreaker_SLMUnavailable_DegradedNEROptIn(t *testing.T) {
+	gw, _ := newCircuitBreakerTestGateway(t, false)
+	rr := doCircuitBreakerRequest(t, gw)
+
 	if rr.Code != http.StatusOK {
-		t.Errorf("circuit breaker fallback failed: expected 200 OK, got %d\nbody: %s",
+		t.Errorf("degraded-NER fallback failed: expected 200 OK, got %d\nbody: %s",
 			rr.Code, rr.Body.String())
 	}
 }

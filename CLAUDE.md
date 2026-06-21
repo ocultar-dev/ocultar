@@ -113,6 +113,7 @@ OCULTAR primarily uses **Doppler** for secret management. If running manually, c
 | `OCU_AUDIT_PRIVATE_KEY` | Hex-encoded 32-byte Ed25519 seed for immutable audit log (generate: `openssl rand -hex 32`) |
 | `OCU_AUDIT_LOG_PATH` | Audit log file path (default: `audit.log` alongside vault file) |
 | `SLACK_SIGNING_SECRET` | Slack app signing secret for HMAC-SHA256 verification of incoming Slack events. Required when using the Slack connector; if unset, Sombra rejects all Slack webhook requests with HTTP 500. |
+| `OCU_SOMBRA_ALLOW_DEGRADED_NER` | Opt-out from Sombra's fail-closed default. Sombra blocks requests (5xx) if the Tier 2 SLM sidecar is unreachable, since Tier 1 regex alone cannot catch names/addresses before they reach a third-party model provider. Set to `true` only if your deployment explicitly prefers availability over detection completeness during SLM outages. |
 
 **Deprecated:** `TIER2_ENGINE` is a legacy alias for `SLM_ADAPTER` — the server logs `[DEPRECATED]` on startup if it is set. Use `SLM_ADAPTER` instead.
 
