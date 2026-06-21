@@ -586,9 +586,9 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 	// are not misidentified as phone numbers.
 	if strings.ContainsAny(refined, "0123456789") && !e.isFullyTokenised(refined) {
 		var phoneErr error
-		refined, phoneErr = parseAndReplaceWithErr(refined, ParseAndReplacePhonesRaw, func(match string) (string, error) {
+		refined, phoneErr = parseAndReplaceWithErr(refined, ParseAndReplacePhonesRaw, func(match string, start, end int) (string, error) {
 			log.Printf("[DEBUG] Tier 1.1 Phone hit: %s", match)
-			return e.getOrSetSecureToken(match, "PHONE", "phone", actor)
+			return e.getOrSetSecureTokenLoc(match, "PHONE", "phone", start, end, actor)
 		})
 		if phoneErr != nil {
 			return "", phoneErr
@@ -597,8 +597,8 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 
 
 	if len(refined) > 10 && (strings.ContainsAny(refined, "0123456789") || containsAnyLower(refined, "rue", "calle", "street", "ave", "road", "str.")) {
-		refined, err = parseAndReplaceWithErr(refined, ParseAndReplaceAddressesRaw, func(match string) (string, error) {
-			return e.getOrSetSecureToken(match, "ADDRESS", "address", actor)
+		refined, err = parseAndReplaceWithErr(refined, ParseAndReplaceAddressesRaw, func(match string, start, end int) (string, error) {
+			return e.getOrSetSecureTokenLoc(match, "ADDRESS", "address", start, end, actor)
 		})
 		if err != nil {
 			return "", err
@@ -901,7 +901,7 @@ func (e *Refinery) applyReplacement(line, target, piiType, source string, actor 
 		if inside {
 			out.WriteString(line[start:end])
 		} else {
-			token, tokenErr := e.getOrSetSecureToken(line[start:end], piiType, source, actor)
+			token, tokenErr := e.getOrSetSecureTokenLoc(line[start:end], piiType, source, start, end, actor)
 			if tokenErr != nil {
 				return "", tokenErr
 			}
@@ -965,7 +965,7 @@ func (e *Refinery) applyReplacementProtected(line, target, piiType, source strin
 		if skip {
 			out.WriteString(line[start:end])
 		} else {
-			token, tokenErr := e.getOrSetSecureToken(line[start:end], piiType, source, actor)
+			token, tokenErr := e.getOrSetSecureTokenLoc(line[start:end], piiType, source, start, end, actor)
 			if tokenErr != nil {
 				return "", tokenErr
 			}
@@ -984,6 +984,18 @@ func (e *Refinery) getOrSetSecureToken(val, piiType, source string, actor string
 		Confidence: 1.0,
 		Method:     []string{source},
 	}
+	return e.getOrSetSecureResult(res, actor)
+}
+
+func (e *Refinery) getOrSetSecureTokenLoc(val, piiType, source string, start, end int, actor string) (string, error) {
+	res := pii.DetectionResult{
+		Entity:     piiType,
+		Value:      val,
+		Confidence: 1.0,
+		Method:     []string{source},
+	}
+	res.Range.Start = start
+	res.Range.End = end
 	return e.getOrSetSecureResult(res, actor)
 }
 
@@ -1200,7 +1212,7 @@ func replaceAllStringFuncErr(re *regexp.Regexp, input string, repl func(string) 
 }
 
 // Helper types for migrating address/phone parsers to support errors
-func parseAndReplaceWithErr(input string, extractor func(string) [][]int, repl func(string) (string, error)) (string, error) {
+func parseAndReplaceWithErr(input string, extractor func(string) [][]int, repl func(match string, start, end int) (string, error)) (string, error) {
 	matches := extractor(input)
 	if len(matches) == 0 {
 		return input, nil
@@ -1232,7 +1244,7 @@ func parseAndReplaceWithErr(input string, extractor func(string) [][]int, repl f
 
 		out.WriteString(input[lastPos:start])
 
-		r, err := repl(input[start:end])
+		r, err := repl(input[start:end], start, end)
 		if err != nil {
 			return "", err
 		}

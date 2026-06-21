@@ -1,0 +1,434 @@
+[
+  {
+    "id": 1,
+    "category": "basic_pii",
+    "text": "Alice Smith living at 123 Main St, New York, NY 10001, phone 555-0199, email alice.smith@outlook.com, SSN 000-12-3456, passport USA123456.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 0,
+        "end": 11
+      },
+      {
+        "type": "ADDRESS",
+        "start": 22,
+        "end": 53
+      },
+      {
+        "type": "PHONE",
+        "start": 61,
+        "end": 69
+      },
+      {
+        "type": "EMAIL",
+        "start": 77,
+        "end": 100
+      },
+      {
+        "type": "SSN",
+        "start": 106,
+        "end": 117
+      },
+      {
+        "type": "PASSPORT",
+        "start": 128,
+        "end": 137
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "category": "basic_pii",
+    "text": "Jean Dupont habite au 45 Rue de la Paix, 75002 Paris, France, t\u00e9l\u00e9phone +33 1 42 27 78 90, email jean.dupont@gmail.fr, num\u00e9ro de s\u00e9curit\u00e9 sociale 180027512345678, passeport FR987654.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 0,
+        "end": 11
+      },
+      {
+        "type": "ADDRESS",
+        "start": 22,
+        "end": 60
+      },
+      {
+        "type": "PHONE",
+        "start": 72,
+        "end": 89
+      },
+      {
+        "type": "EMAIL",
+        "start": 97,
+        "end": 117
+      },
+      {
+        "type": "SSN",
+        "start": 146,
+        "end": 161
+      },
+      {
+        "type": "PASSPORT",
+        "start": 173,
+        "end": 181
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "category": "basic_pii",
+    "text": "Mar\u00eda Garc\u00eda, calle Mayor 12, Madrid 28013, Espa\u00f1a, m\u00f3vil +34 600 123 456, email maria.garcia@yahoo.es, DNI 12345678A, pasaporte ES112233.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 0,
+        "end": 12
+      },
+      {
+        "type": "ADDRESS",
+        "start": 14,
+        "end": 50
+      },
+      {
+        "type": "PHONE",
+        "start": 58,
+        "end": 73
+      },
+      {
+        "type": "EMAIL",
+        "start": 81,
+        "end": 102
+      },
+      {
+        "type": "SSN",
+        "start": 108,
+        "end": 117
+      },
+      {
+        "type": "PASSPORT",
+        "start": 129,
+        "end": 137
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "category": "basic_pii",
+    "text": "Hans M\u00fcller, Hauptstra\u00dfe 10, 10117 Berlin, Deutschland, Tel +49 30 1234567, E-Mail hans.mueller@web.de, Steuernummer 112/345/67890, Personalausweis DE5544332.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 0,
+        "end": 11
+      },
+      {
+        "type": "ADDRESS",
+        "start": 13,
+        "end": 54
+      },
+      {
+        "type": "PHONE",
+        "start": 60,
+        "end": 74
+      },
+      {
+        "type": "EMAIL",
+        "start": 83,
+        "end": 102
+      },
+      {
+        "type": "TAX_ID",
+        "start": 117,
+        "end": 130
+      },
+      {
+        "type": "NATIONAL_ID",
+        "start": 148,
+        "end": 157
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "category": "enterprise_data",
+    "text": "Hi Support team, this is Robert Johnson. I can't access my dashboard. My billing address is 789 Pine Rd, Chicago, IL. You can email me at rjohnson@enterprise.com or call +1 312 555 0143.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 25,
+        "end": 39
+      },
+      {
+        "type": "ADDRESS",
+        "start": 92,
+        "end": 116
+      },
+      {
+        "type": "EMAIL",
+        "start": 138,
+        "end": 161
+      },
+      {
+        "type": "PHONE",
+        "start": 170,
+        "end": 185
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "category": "enterprise_data",
+    "text": "Hey Team, we got a new enterprise lead from Acme Corp. Contact person is Sarah Connor (sconnor@acme.com, +1 415 555 9876). She is interested in our API security pipeline.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 73,
+        "end": 85
+      },
+      {
+        "type": "EMAIL",
+        "start": 87,
+        "end": 103
+      },
+      {
+        "type": "PHONE",
+        "start": 105,
+        "end": 120
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "category": "enterprise_data",
+    "text": "CRM Export entry: ID 9928, Customer David Lee, Company TechCorp, Email dlee@techcorp.io, Phone +1 650 555 1212, Address 101 Silicon Valley Blvd, San Jose, CA.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 36,
+        "end": 45
+      },
+      {
+        "type": "EMAIL",
+        "start": 71,
+        "end": 87
+      },
+      {
+        "type": "PHONE",
+        "start": 95,
+        "end": 110
+      },
+      {
+        "type": "ADDRESS",
+        "start": 120,
+        "end": 157
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "category": "medical_data",
+    "text": "Patient John Doe (DOB 1980-05-12) presented with acute symptoms. MRN: MRN-9988776. Insurance ID: BLUE-900811. Discharged to 44 Health Lane, Boston.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 8,
+        "end": 16
+      },
+      {
+        "type": "MEDICAL_RECORD",
+        "start": 70,
+        "end": 81
+      },
+      {
+        "type": "PATIENT_ID",
+        "start": 97,
+        "end": 108
+      },
+      {
+        "type": "ADDRESS",
+        "start": 124,
+        "end": 146
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "category": "medical_data",
+    "text": "Clinical note for patient Emily Davis, patient ID MED-8877112. Contact number is +1 617 555 0100. Treated by Gregory House.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 26,
+        "end": 37
+      },
+      {
+        "type": "PATIENT_ID",
+        "start": 50,
+        "end": 61
+      },
+      {
+        "type": "PHONE",
+        "start": 81,
+        "end": 96
+      },
+      {
+        "type": "PERSON",
+        "start": 109,
+        "end": 122
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "category": "financial_data",
+    "text": "Account Statement for Frank Miller. Account number: 9988776655. IBAN: DE89 3704 0044 0532 0130 00. Credit Card used: 4111 2222 3333 4444. Tax ID: DE123456789.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 22,
+        "end": 34
+      },
+      {
+        "type": "IBAN",
+        "start": 70,
+        "end": 97
+      },
+      {
+        "type": "CREDIT_CARD",
+        "start": 117,
+        "end": 136
+      },
+      {
+        "type": "TAX_ID",
+        "start": 146,
+        "end": 157
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "category": "financial_data",
+    "text": "Invoice INV-2026-908. Bill to: Soci\u00e9t\u00e9 G\u00e9n\u00e9rale, account 4532015112830366, SWIFT SOGEFRPP. Approved by John Smith. Transfer EUR 84,293 to IBAN FR76 3000 6000 0112 3456 7890 189.",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 103,
+        "end": 113
+      },
+      {
+        "type": "IBAN",
+        "start": 143,
+        "end": 176
+      },
+      {
+        "type": "CREDIT_CARD",
+        "start": 57,
+        "end": 73
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "category": "developer_workflows",
+    "text": "2026-06-21 12:00:00 [ERROR] Connection failed to dev-db.internal.company.com:5432 using postgres://admin:supersecretpassword@10.0.0.5/dbname. API key: api_key_abcd1234efgh5678.",
+    "entities": [
+      {
+        "type": "HOST",
+        "start": 49,
+        "end": 76
+      },
+      {
+        "type": "CREDENTIAL",
+        "start": 105,
+        "end": 124
+      },
+      {
+        "type": "SECRET",
+        "start": 151,
+        "end": 175
+      },
+      {
+        "type": "URL",
+        "start": 88,
+        "end": 140
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "category": "developer_workflows",
+    "text": "Please use the following AWS configuration:\naws_access_key_id = AKIAIOSFODNN7EXAMPLE\naws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\ngithub_token = ghp_11223344556677889900aabbccddeeffgghh",
+    "entities": [
+      {
+        "type": "SECRET",
+        "start": 64,
+        "end": 84
+      },
+      {
+        "type": "SECRET",
+        "start": 109,
+        "end": 149
+      },
+      {
+        "type": "SECRET",
+        "start": 165,
+        "end": 205
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "category": "adversarial_inputs",
+    "text": "Reach me at john [dot] smith [at] example [dot] com or call +1-202-555-o199.",
+    "entities": [
+      {
+        "type": "EMAIL",
+        "start": 12,
+        "end": 51
+      },
+      {
+        "type": "PHONE",
+        "start": 60,
+        "end": 75
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "category": "adversarial_inputs",
+    "text": "My name is j0hn sm1th and my password is p4ssw0rd!",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 11,
+        "end": 21
+      },
+      {
+        "type": "CREDENTIAL",
+        "start": 41,
+        "end": 49
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "category": "adversarial_inputs",
+    "text": "Na1ne: Al1ce S1n1th, Erna1l: al1ce@exan1ple.corn, Phor1e: 555_0123",
+    "entities": [
+      {
+        "type": "PERSON",
+        "start": 7,
+        "end": 19
+      },
+      {
+        "type": "EMAIL",
+        "start": 29,
+        "end": 48
+      },
+      {
+        "type": "PHONE",
+        "start": 58,
+        "end": 66
+      }
+    ]
+  }
+]

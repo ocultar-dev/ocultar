@@ -1,0 +1,11 @@
+name: CD Pipeline
+on: [push]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS
+        env:
+          AWS_ACCESS_KEY_ID: "AKIA9988776655EXAMPLE"
+          AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+        run: echo "Configuring AWS credentials..."

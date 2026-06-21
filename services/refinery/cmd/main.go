@@ -180,11 +180,14 @@ func main() {
 	case "openai-chat":
 		scanner = inference.NewQwenScanner(sidecarURL)
 		log.Printf("[INFO] Tier 2 AI active via openai-chat (Qwen/llama.cpp): %s", sidecarURL) //nolint:gosec // G706: sidecarURL is an operator-configured value, not user input
+		eng.SetAIScanner(scanner)
+	case "none", "disabled":
+		log.Printf("[INFO] Tier 2 AI deactivated (NoopAIScanner active)")
 	default:
 		scanner = inference.NewRemoteScanner(sidecarURL)
 		log.Printf("[INFO] Tier 2 AI active via privacy-filter sidecar: %s", sidecarURL) //nolint:gosec // G706: sidecarURL is an operator-configured value, not user input
+		eng.SetAIScanner(scanner)
 	}
-	eng.SetAIScanner(scanner)
 
 	// Register per-domain sidecars from config (e.g. fr-finance → http://localhost:8087).
 	for domain, url := range config.Global.Tier2DomainSidecars {

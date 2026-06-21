@@ -1,0 +1,115 @@
+[
+  {
+    "file": "test_dev_repo/src/main.rs",
+    "category": "rust",
+    "text": "// Rust main entrypoint\nconst API_KEY: &str = \"api_key_88319aa283bc9942a781\";\n\nfn main() {\n    let db_url = \"postgres://postgres:admin_password123@db.prod.internal.company.com:5432/db\";\n    println!(\"Connecting to database at {}\", db_url);\n}\n",
+    "entities": [
+      {
+        "type": "SECRET",
+        "substring": "api_key_88319aa283bc9942a781",
+        "start": 47,
+        "end": 75
+      },
+      {
+        "type": "HOST",
+        "substring": "db.prod.internal.company.com",
+        "start": 147,
+        "end": 175
+      },
+      {
+        "type": "CREDENTIAL",
+        "substring": "admin_password123",
+        "start": 129,
+        "end": 146
+      },
+      {
+        "type": "URL",
+        "substring": "postgres://postgres:admin_password123@db.prod.internal.company.com:5432/db",
+        "start": 109,
+        "end": 183
+      }
+    ]
+  },
+  {
+    "file": "test_dev_repo/src/index.ts",
+    "category": "typescript",
+    "text": "// TypeScript Entrypoint\nconst slackToken: string = \"xoxb-1122334455-6677889900-aabbccddeeff\";\nconst internalUrl: string = \"http://internal-metrics.monitoring.local:9090\";\n\nexport function logMetrics() {\n    console.log(`Sending metrics to ${internalUrl}`);\n}\n",
+    "entities": [
+      {
+        "type": "SECRET",
+        "substring": "xoxb-1122334455-6677889900-aabbccddeeff",
+        "start": 53,
+        "end": 92
+      },
+      {
+        "type": "HOST",
+        "substring": "internal-metrics.monitoring.local",
+        "start": 131,
+        "end": 164
+      },
+      {
+        "type": "URL",
+        "substring": "http://internal-metrics.monitoring.local:9090",
+        "start": 124,
+        "end": 169
+      }
+    ]
+  },
+  {
+    "file": "test_dev_repo/README.md",
+    "category": "markdown",
+    "text": "# Developer Setup\n\nWelcome to the project. To access the staging server, run:\n```bash\nssh dev-user@ssh.staging.company.net\n```\nThe password is `staging_secret_pass`.\n",
+    "entities": [
+      {
+        "type": "HOST",
+        "substring": "ssh.staging.company.net",
+        "start": 99,
+        "end": 122
+      },
+      {
+        "type": "CREDENTIAL",
+        "substring": "staging_secret_pass",
+        "start": 144,
+        "end": 163
+      }
+    ]
+  },
+  {
+    "file": "test_dev_repo/k8s/deployment.yaml",
+    "category": "kubernetes",
+    "text": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: api-service\nspec:\n  template:\n    spec:\n      containers:\n      - name: api\n        env:\n        - name: GITHUB_TOKEN\n          value: \"ghp_secure_github_token_992182bbcca382\"\n        - name: DB_HOST\n          value: \"db-replica-01.database.svc.cluster.local\"\n",
+    "entities": [
+      {
+        "type": "SECRET",
+        "substring": "ghp_secure_github_token_992182bbcca382",
+        "start": 191,
+        "end": 229
+      },
+      {
+        "type": "HOST",
+        "substring": "db-replica-01.database.svc.cluster.local",
+        "start": 273,
+        "end": 313
+      }
+    ]
+  },
+  {
+    "file": "test_dev_repo/.github/workflows/deploy.yml",
+    "category": "cicd",
+    "text": "name: CD Pipeline\non: [push]\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Configure AWS\n        env:\n          AWS_ACCESS_KEY_ID: \"AKIA9988776655EXAMPLE\"\n          AWS_SECRET_ACCESS_KEY: \"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\"\n        run: echo \"Configuring AWS credentials...\"\n",
+    "entities": [
+      {
+        "type": "SECRET",
+        "substring": "AKIA9988776655EXAMPLE",
+        "start": 154,
+        "end": 175
+      },
+      {
+        "type": "SECRET",
+        "substring": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        "start": 211,
+        "end": 251
+      }
+    ]
+  }
+]
