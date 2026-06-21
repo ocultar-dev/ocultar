@@ -86,7 +86,7 @@ func (s *Scrubber) Prescrub(text string) (string, error) {
 
 func (s *Scrubber) storeToken(value string, piiType string) (string, error) {
 	h := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
-	token := fmt.Sprintf("[%s_%s]", piiType, h[:8])
+	token := fmt.Sprintf("[%s_%s]", piiType, h[:16])
 	encrypted, err := encrypt([]byte(value), s.masterKey)
 	if err != nil {
 		return "", err

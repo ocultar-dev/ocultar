@@ -44,6 +44,8 @@ func newSSRFProxy(t *testing.T) *httptest.Server {
 	t.Cleanup(func() { v.Close() })
 
 	config.InitDefaults()
+	config.Global.MaxConcurrency = 100
+	config.Global.QueueSize = 100
 	eng := refinery.NewRefinery(v, masterKey)
 	eng.Serve = "proxy"
 
