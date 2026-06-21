@@ -10,7 +10,6 @@ replace github.com/ocultar-dev/ocultar/internal/pii => ../../internal/pii
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/nguyenthenguyen/docx v0.0.0-20230621112118-9c8e795a11db
 	github.com/ocultar-dev/ocultar v0.0.0-00010101000000-000000000000
 	github.com/ocultar-dev/ocultar/internal/pii v0.0.0-00010101000000-000000000000
 	github.com/ocultar-dev/ocultar/vault v0.0.0-00010101000000-000000000000

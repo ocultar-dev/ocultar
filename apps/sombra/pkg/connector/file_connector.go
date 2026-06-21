@@ -1,16 +1,22 @@
 package connector
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
-
-	"github.com/nguyenthenguyen/docx"
 )
+
+// maxDocxXMLBytes caps the decompressed size of word/document.xml read from
+// an uploaded .docx. Without a cap, a small, highly-compressible XML payload
+// (a zip bomb) could decompress to an unbounded size in memory even though
+// the compressed upload itself stays under the connector's MaxBodyBytes limit.
+const maxDocxXMLBytes = 64 << 20 // 64 MiB, far beyond any legitimate Word document body
 
 // FileConnector handles local file uploads (CSV, JSON, plain text).
 // It is the "manual upload" path — users upload a bank statement, medical
@@ -110,14 +116,42 @@ func normaliseToText(data []byte, contentType string) (string, error) {
 // normaliseDocx extracts clean plain text from a .docx file in memory.
 // It strips Word TOC field codes and other XML artifacts that cause
 // false-positive PII detections (e.g. sequential TOC page numbers).
+//
+// A .docx is a zip archive; only word/document.xml (the document body) is
+// read — headers, footers, and embedded media are not needed for PII
+// detection and are left untouched.
 func normaliseDocx(data []byte) (string, error) {
-	r, err := docx.ReadDocxFromMemory(bytes.NewReader(data), int64(len(data)))
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return "", fmt.Errorf("docx parse error: %w", err)
 	}
-	doc := r.Editable()
-	content := doc.GetContent()
-	return cleanDocxText(content), nil
+
+	var docFile *zip.File
+	for _, f := range zr.File {
+		if f.Name == "word/document.xml" {
+			docFile = f
+			break
+		}
+	}
+	if docFile == nil {
+		return "", fmt.Errorf("docx parse error: word/document.xml not found")
+	}
+
+	rc, err := docFile.Open()
+	if err != nil {
+		return "", fmt.Errorf("docx parse error: %w", err)
+	}
+	defer rc.Close()
+
+	content, err := io.ReadAll(io.LimitReader(rc, maxDocxXMLBytes+1))
+	if err != nil {
+		return "", fmt.Errorf("docx parse error: %w", err)
+	}
+	if len(content) > maxDocxXMLBytes {
+		return "", fmt.Errorf("docx parse error: word/document.xml exceeds %d byte limit (possible zip bomb)", maxDocxXMLBytes)
+	}
+
+	return cleanDocxText(string(content)), nil
 }
 
 // cleanDocxText strips XML tags and Word-specific field codes from extracted text.
