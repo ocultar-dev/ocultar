@@ -159,7 +159,9 @@ func NewRefinery(v vault.Provider, key []byte) *Refinery {
 	// Derive HMAC key from MasterKey via HKDF for token generation
 	r := hkdf.New(sha256.New, key, nil, []byte("ocultar-token-hmac"))
 	hmacKey := make([]byte, 32)
-	io.ReadFull(r, hmacKey)
+	if _, err := io.ReadFull(r, hmacKey); err != nil {
+		panic(fmt.Sprintf("failed to derive HMAC key via HKDF: %v", err))
+	}
 
 	e := &Refinery{
 		Vault:       v,
