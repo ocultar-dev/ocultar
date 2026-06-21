@@ -75,7 +75,7 @@ func main() {
 			log.Fatalf("failed to initialize privacy-filter scanner: %v", err)
 		}
 	default:
-		log.Fatalf("[FATAL] Unknown SLM_ADAPTER: %s", adapter)
+		log.Fatalf("[FATAL] Unsupported SLM_ADAPTER: %q (slm-engine only supports \"privacy-filter\"; openai-chat/llama.cpp is handled by the refinery directly)", adapter)
 	}
 	defer scanner.Close()
 
