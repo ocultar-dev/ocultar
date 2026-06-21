@@ -27,20 +27,20 @@ The vault is a local encrypted lookup table. Its job is simple:
 - **Store**: given a PII string, encrypt it and record the mapping `token_id → (token, ciphertext)`.
 - **Retrieve**: given a `token_id`, return the original PII string (after AES decryption).
 
-No PII ever leaves the vault unencrypted. The upstream API (OpenAI, Gemini, etc.) sees only tokens like `[EMAIL_9c8f7a1b]`.
+No PII ever leaves the vault unencrypted. The upstream API (OpenAI, Gemini, etc.) sees only tokens like `[EMAIL_9c8f7a1b1234abcd]`.
 
 ---
 
 ## 2. Token Format
 
-Every token looks like `[TYPE_xxxxxxxx]` where:
+Every token looks like `[TYPE_16hexchars]` where:
 
 | Part | Example | Meaning |
 |---|---|---|
 | `TYPE` | `EMAIL`, `PERSON`, `SSN` | The detected PII category |
 | `16hexchars` | `9c8f7a1b1234abcd` | First 16 hex chars of HMAC-SHA256(key, plaintext) |
 
-Example: `alice@example.com` → `[EMAIL_9c8f7a1b]`
+Example: `alice@example.com` → `[EMAIL_9c8f7a1b1234abcd]`
 
 The hash suffix is **deterministic**: the same input always produces the same token. This means the vault is naturally idempotent — re-processing a document that has already been redacted produces identical tokens with no duplicate rows.
 
@@ -65,10 +65,10 @@ For each detected PII match, the refinery runs:
 
 ## 4. Rehydration
 
-The proxy re-hydration layer scans upstream responses for `[TYPE_xxxxxxxx]` patterns and replaces them with the original PII:
+The proxy re-hydration layer scans upstream responses for `[TYPE_16hexchars]` patterns and replaces them with the original PII:
 
 ```
-[EMAIL_9c8f7a1b] → vault.GetToken("9c8f7a1b") → ciphertext
+[EMAIL_9c8f7a1b1234abcd] → vault.GetToken("9c8f7a1b1234abcd") → ciphertext
                   → AES-256-GCM.Decrypt(ciphertext, derivedKey)
                   → "alice@example.com"
 ```
@@ -108,10 +108,10 @@ func main() {
     defer v.Close()
 
     // Store a token manually (the refinery does this automatically)
-    inserted, err := v.StoreToken("9c8f7a1b", "[EMAIL_9c8f7a1b]", encryptedBytes)
+    inserted, err := v.StoreToken("9c8f7a1b1234abcd", "[EMAIL_9c8f7a1b1234abcd]", encryptedBytes)
 
     // Look up an existing token
-    token, found := v.GetToken("9c8f7a1b")
+    token, found := v.GetToken("9c8f7a1b1234abcd")
 
     // Count total vault entries (used for pilot-mode cap)
     count := v.CountAll()

@@ -44,7 +44,7 @@ If the Tier 2 sidecar is unavailable or times out, the circuit breaker opens and
 
 ## Vault
 
-Every detected entity is replaced by a deterministic token (`[EMAIL_9c8f7a1b]`) and the original value is stored in a local DuckDB vault encrypted with AES-256-GCM.
+Every detected entity is replaced by a deterministic token (`[EMAIL_9c8f7a1b2d3e4f50]`) and the original value is stored in a local DuckDB vault encrypted with AES-256-GCM.
 
 **Key derivation:** The vault key is never stored on disk. At startup, `OCU_MASTER_KEY` and `OCU_SALT` are passed through HKDF-SHA256 to derive a per-deployment encryption key that lives only in memory.
 

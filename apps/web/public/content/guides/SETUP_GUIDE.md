@@ -145,10 +145,10 @@ You should see the OCULTAR Live Dashboard with the input panel on the left.
 3. The **Clean Asset** panel on the right will instantly show redacted output:
 
    ```
-   From: [EMAIL_a1b2c3d4]
-   Tel: [PHONE_9f8e7d6c]
-   IBAN: [IBAN_12ab34cd]
-   Regards, [PERSON_5e4f3a2b]
+   From: [EMAIL_a1b2c3d4e5f6a7b8]
+   Tel: [PHONE_9f8e7d6c3a2b1c90]
+   IBAN: [IBAN_12ab34cd56ef7809]
+   Regards, [PERSON_5e4f3a2b6c7d8e90]
    ```
 
 4. The **Detection Attribution** panel appears below the output. For each entity found it shows:

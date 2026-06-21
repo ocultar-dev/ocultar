@@ -312,7 +312,7 @@ func main() {
     if err != nil {
         panic(err)
     }
-    // refined → "Call me at [EMAIL_9c8f7a1b]"
+    // refined → "Call me at [EMAIL_9c8f7a1b2d3e4f50]"
     fmt.Println(refined)
 }
 ```

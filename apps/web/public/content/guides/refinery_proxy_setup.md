@@ -138,7 +138,7 @@ docker compose down -v
 ### Key Rotation Strategy
 The `OCU_MASTER_KEY` and `OCU_SALT` are the root of your Sovereign Vault's security.
 * **⚠️ WARNING**: Changing either of these values after data has been vaulted will invalidate all existing tokens.
-* **Fallback Behavior**: In the event of a key rotation, OCULTAR will not crash but will return **un-hydrated tokens** (e.g., `[PERSON_a1b2c3d4]`) instead of original PII. This prevents data leaks while alerting you to the key mismatch.
+* **Fallback Behavior**: In the event of a key rotation, OCULTAR will not crash but will return **un-hydrated tokens** (e.g., `[PERSON_a1b2c3d4e5f6a7b8]`) instead of original PII. This prevents data leaks while alerting you to the key mismatch.
 * **Best Practice**: Backup your `.env` file securely. If you must rotate keys, you should clear the vault (`rm vault.db`) to ensure fresh deterministic mappings.
 ### Encryption & Security Protocol
 All Sovereign Data Objects (SDOs) are protected using industry-standard authenticated encryption:

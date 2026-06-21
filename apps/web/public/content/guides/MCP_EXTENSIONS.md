@@ -48,11 +48,11 @@ Redacts PII from text before it reaches the AI model. Returns the cleaned text w
 **Output**
 ```json
 {
-  "cleanText": "[PERSON_a1b2c3d4], [EMAIL_9c8f7a1b], IBAN [IBAN_7f3e9a2b]",
+  "cleanText": "[PERSON_a1b2c3d4e5f6a7b8], [EMAIL_9c8f7a1b2d3e4f50], IBAN [IBAN_7f3e9a2b1c4d5e60]",
   "tokenMap": {
-    "[PERSON_a1b2c3d4]": "PERSON",
-    "[EMAIL_9c8f7a1b]": "EMAIL",
-    "[IBAN_7f3e9a2b]": "IBAN"
+    "[PERSON_a1b2c3d4e5f6a7b8]": "PERSON",
+    "[EMAIL_9c8f7a1b2d3e4f50]": "EMAIL",
+    "[IBAN_7f3e9a2b1c4d5e60]": "IBAN"
   }
 }
 ```
@@ -65,7 +65,7 @@ De-tokenizes specific tokens back to plaintext. Requires `OCULTAR_AUDITOR_TOKEN`
 
 **Input**
 ```json
-{ "tokens": ["[EMAIL_9c8f7a1b]", "[IBAN_7f3e9a2b]"] }
+{ "tokens": ["[EMAIL_9c8f7a1b2d3e4f50]", "[IBAN_7f3e9a2b1c4d5e60]"] }
 ```
 
 ---

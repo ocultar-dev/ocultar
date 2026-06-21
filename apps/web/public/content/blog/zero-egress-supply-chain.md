@@ -88,9 +88,9 @@ Payload forwarded to the upstream:
 {
   "messages": [{
     "role": "user",
-    "content": "Process the application for [PERSON_a3f1c2d4],
-                DOB [DATE_9b2e7f1a], tel [PHONE_4d8c3b2e],
-                IBAN [IBAN_c7f2a109]"
+    "content": "Process the application for [PERSON_a3f1c2d4b5e6f708],
+                DOB [DATE_9b2e7f1a4c6d8e20], tel [PHONE_4d8c3b2e5f6a7b80],
+                IBAN [IBAN_c7f2a1098b7c6d50]"
   }]
 }
 ```
@@ -124,9 +124,9 @@ Tiers 0–1.5 are deterministic and require no model. Tier 2 now runs `openai/pr
 Every vault event is written as a structured JSON line:
 
 ```json
-{"timestamp":"2026-04-22T09:14:03Z","actor":"10.0.1.44","action":"vaulted","token":"[PERSON_a3f1c2d4]","regulation":"GDPR_Art4"}
-{"timestamp":"2026-04-22T09:14:03Z","actor":"10.0.1.44","action":"vaulted","token":"[IBAN_c7f2a109]","regulation":"PCI_DSS"}
-{"timestamp":"2026-04-22T09:14:07Z","actor":"10.0.1.44","action":"matched","token":"[PERSON_a3f1c2d4]","regulation":"GDPR_Art4"}
+{"timestamp":"2026-04-22T09:14:03Z","actor":"10.0.1.44","action":"vaulted","token":"[PERSON_a3f1c2d4b5e6f708]","regulation":"GDPR_Art4"}
+{"timestamp":"2026-04-22T09:14:03Z","actor":"10.0.1.44","action":"vaulted","token":"[IBAN_c7f2a1098b7c6d50]","regulation":"PCI_DSS"}
+{"timestamp":"2026-04-22T09:14:07Z","actor":"10.0.1.44","action":"matched","token":"[PERSON_a3f1c2d4b5e6f708]","regulation":"GDPR_Art4"}
 ```
 
 The token is what is logged. Never the original PII. The audit trail satisfies GDPR Article 32(1)(d) without creating a secondary exposure surface. It is signed with Ed25519 and exportable to any SIEM via Filebeat or Fluent Bit.

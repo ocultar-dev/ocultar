@@ -87,18 +87,18 @@ sensitive data. You can also ask explicitly:
 Claude returns:
 ```json
 {
-  "cleanText": "John [NAME_a1b2c3d4]'s email is [EMAIL_9c8f7a1b], SSN [SSN_3a1b2c4d]",
+  "cleanText": "John [NAME_a1b2c3d4e5f6a7b8]'s email is [EMAIL_9c8f7a1b2d3e4f50], SSN [SSN_3a1b2c4d5e6f7081]",
   "tokenMap": {
-    "[NAME_a1b2c3d4]": "NAME",
-    "[EMAIL_9c8f7a1b]": "EMAIL",
-    "[SSN_3a1b2c4d]": "SSN"
+    "[NAME_a1b2c3d4e5f6a7b8]": "NAME",
+    "[EMAIL_9c8f7a1b2d3e4f50]": "EMAIL",
+    "[SSN_3a1b2c4d5e6f7081]": "SSN"
   }
 }
 ```
 
 For authorized workflows that need to restore PII after AI processing:
 
-> "Reveal these tokens: [EMAIL_9c8f7a1b], [SSN_3a1b2c4d]"
+> "Reveal these tokens: [EMAIL_9c8f7a1b2d3e4f50], [SSN_3a1b2c4d5e6f7081]"
 
 This call is recorded in the immutable Ed25519-signed audit log.
 

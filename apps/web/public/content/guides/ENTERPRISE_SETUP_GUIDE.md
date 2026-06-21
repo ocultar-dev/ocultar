@@ -258,7 +258,7 @@ docker compose restart ocultar-proxy
 **Testing a new rule:**
 ```bash
 echo "Patient PTN-001234 was admitted." | ./ocultar
-# Expected: Patient [PATIENT_ID_3f1a9c2b] was admitted.
+# Expected: Patient [PATIENT_ID_3f1a9c2b4d5e6f70] was admitted.
 ```
 
 ---
@@ -388,8 +388,8 @@ When `OCU_AUDIT_PRIVATE_KEY` is set, every vault event is written as a structure
 
 **Format:**
 ```json
-{"timestamp":"2026-03-06T14:00:00Z","actor":"192.168.1.1","action":"vaulted","token":"[EMAIL_9c8f7a1b]"}
-{"timestamp":"2026-03-06T14:00:01Z","actor":"192.168.1.1","action":"matched","token":"[EMAIL_9c8f7a1b]"}
+{"timestamp":"2026-03-06T14:00:00Z","actor":"192.168.1.1","action":"vaulted","token":"[EMAIL_9c8f7a1b2d3e4f50]"}
+{"timestamp":"2026-03-06T14:00:01Z","actor":"192.168.1.1","action":"matched","token":"[EMAIL_9c8f7a1b2d3e4f50]"}
 ```
 
 | Field | Description |

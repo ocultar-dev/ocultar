@@ -9,7 +9,7 @@ Ocultar is an open-source local PII/PHI masking engine for AI workflows.
 
 It runs as a local HTTP sidecar. Send it text before it reaches a cloud LLM; it returns the
 same text with every piece of personal data replaced by a deterministic, reversible token
-(`[EMAIL_9c8f7a1b]`, `[PERSON_3a12b4cd]`, …). Originals are encrypted and stored in a
+(`[EMAIL_9c8f7a1b2d3e4f50]`, `[PERSON_3a12b4cd91e7f6a0]`, …). Originals are encrypted and stored in a
 local vault. Callers with the auditor token can restore them.
 
 No PII ever reaches the upstream model.
@@ -70,7 +70,7 @@ Mask PII in text or JSON. No authentication required.
 
 ```json
 {
-  "refined": "{\"message\":\"Hello [PERSON_3a12b4cd], your order [EMAIL_9c8f7a1b] is ready.\"}",
+  "refined": "{\"message\":\"Hello [PERSON_3a12b4cd91e7f6a0], your order [EMAIL_9c8f7a1b2d3e4f50] is ready.\"}",
   "report": {
     "hits": 2,
     "types": ["PERSON", "EMAIL"]
@@ -92,7 +92,7 @@ Returns `403` if `OCU_AUDITOR_TOKEN` is not set on the server.
 **Request body**:
 
 ```json
-{ "tokens": ["[PERSON_3a12b4cd]", "[EMAIL_9c8f7a1b]"] }
+{ "tokens": ["[PERSON_3a12b4cd91e7f6a0]", "[EMAIL_9c8f7a1b2d3e4f50]"] }
 ```
 
 **Response**:
@@ -100,8 +100,8 @@ Returns `403` if `OCU_AUDITOR_TOKEN` is not set on the server.
 ```json
 {
   "results": {
-    "[PERSON_3a12b4cd]": "Alice Martin",
-    "[EMAIL_9c8f7a1b]": "alice@example.com"
+    "[PERSON_3a12b4cd91e7f6a0]": "Alice Martin",
+    "[EMAIL_9c8f7a1b2d3e4f50]": "alice@example.com"
   }
 }
 ```
@@ -147,7 +147,7 @@ privacy-filter protocol (default).
 
 ## Privacy model
 
-- **Zero-egress design.** Masked tokens (`[EMAIL_9c8f7a1b]`, …) are the only data forwarded to the upstream model. Raw text is not transmitted.
+- **Zero-egress design.** Masked tokens (`[EMAIL_9c8f7a1b2d3e4f50]`, …) are the only data forwarded to the upstream model. Raw text is not transmitted.
 - **Local vault only.** The mapping of each token back to its original value is stored in an encrypted DuckDB vault (`vault.db`) on the local filesystem using AES-256-GCM with HKDF-SHA256. The vault file is never transmitted.
 - **Raw prompt retention.** The refinery logs each raw (unmasked) prompt locally to the vault to support the audit diff view. This data is encrypted at rest alongside the token mappings and is not sent anywhere. If prompt retention is not desired, do not configure `OCU_AUDITOR_TOKEN` — without an auditor token the reveal endpoint returns `403` and the diff view is inaccessible.
 - **Fail-closed design.** If the refinery encounters an error or is unavailable, the gateway returns a `5xx` error and stops — it does not forward raw text as a fallback.

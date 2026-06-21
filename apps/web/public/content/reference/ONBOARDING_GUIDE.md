@@ -22,7 +22,7 @@ By the end of this course, you will be able to:
 When enterprises use AI models like ChatGPT, Gemini, or Claude, they often send customer names, financial records, and health data to external servers. Under GDPR (Article 28), HIPAA, and other frameworks, exposing this Personally Identifiable Information (PII) to third-party clouds is a reportable liability, carrying massive fines.
 
 ### The Solution: OCULTAR
-OCULTAR is a **Zero-Egress Data Refinery**. "Zero Egress" means sensitive data never leaves the client's infrastructure. OCULTAR acts as a secure bridge, catching PII in real-time, locking it in a local encrypted vault, and sending meaningless tokens (e.g., `[EMAIL_3a9f2b01]`) to the AI. When the AI responds, OCULTAR rehydrates the tokens back into the original data before returning it to the user.
+OCULTAR is a **Zero-Egress Data Refinery**. "Zero Egress" means sensitive data never leaves the client's infrastructure. OCULTAR acts as a secure bridge, catching PII in real-time, locking it in a local encrypted vault, and sending meaningless tokens (e.g., `[EMAIL_3a9f2b01c4e6f810]`) to the AI. When the AI responds, OCULTAR rehydrates the tokens back into the original data before returning it to the user.
 
 ### Why it Matters
 Unlike tools like AWS Macie or Google DLP, which require sending your data to *their* cloud to be scanned, OCULTAR operates natively on the client's hardware. It provides **Privacy-by-Design**, converting regulatory liabilities into audit-safe assets.

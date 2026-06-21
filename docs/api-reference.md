@@ -61,7 +61,7 @@ Detect and mask PII in text or JSON. No authentication required.
 
 ```json
 {
-  "refined": "{\"message\":\"Hello [PERSON_3a12b4cd], your balance is [FINANCIAL_9c8f7a1b].\"}",
+  "refined": "{\"message\":\"Hello [PERSON_3a12b4cd91e7f6a0], your balance is [FINANCIAL_9c8f7a1b2d3e4f50].\"}",
   "report": {
     "hits": 2,
     "types": ["PERSON", "FINANCIAL"]
@@ -77,7 +77,7 @@ Detect and mask PII in text or JSON. No authentication required.
 
 > `refined` is always a JSON-encoded string, even when the input was plain text. This is by design — it ensures the response is safe to embed in any JSON context without escaping issues.
 
-**Token format:** `[TYPE_xxxxxxxx]` where `TYPE` is the entity category (e.g. `PERSON`, `EMAIL`, `SSN`, `IBAN`, `PHONE`) and `xxxxxxxx` is an 8-character hex digest derived from the original value. The same input always produces the same token within a vault instance.
+**Token format:** `[TYPE_xxxxxxxxxxxxxxxx]` where `TYPE` is the entity category (e.g. `PERSON`, `EMAIL`, `SSN`, `IBAN`, `PHONE`) and `xxxxxxxxxxxxxxxx` is the first 16 hex characters of `HMAC-SHA256(Derived_HMAC_Key, plaintext)`. The same input always produces the same token within a vault instance. (Pre-registered entity-registry tokens use a different, numeric format — see `POST /api/entities` below.)
 
 **Error responses:**
 
@@ -100,7 +100,7 @@ Every call to this endpoint is recorded in the immutable Ed25519-signed audit lo
 
 ```json
 {
-  "tokens": ["[PERSON_3a12b4cd]", "[EMAIL_9c8f7a1b]"]
+  "tokens": ["[PERSON_3a12b4cd91e7f6a0]", "[EMAIL_9c8f7a1b2d3e4f50]"]
 }
 ```
 
@@ -109,8 +109,8 @@ Every call to this endpoint is recorded in the immutable Ed25519-signed audit lo
 ```json
 {
   "results": {
-    "[PERSON_3a12b4cd]": "Alice Martin",
-    "[EMAIL_9c8f7a1b]": "alice@example.com"
+    "[PERSON_3a12b4cd91e7f6a0]": "Alice Martin",
+    "[EMAIL_9c8f7a1b2d3e4f50]": "alice@example.com"
   }
 }
 ```
@@ -169,9 +169,11 @@ Pre-seeding entities ensures that all variants of a name or identifier map to th
 
 ```json
 {
-  "canonical_token": "[PERSON_3a12b4cd]"
+  "canonical_token": "[PERSON_1]"
 }
 ```
+
+Entity-registry tokens use a sequential numeric suffix (not a hash) — every registered variant of "Alice Martin" resolves to this same `[PERSON_1]` token.
 
 ---
 
@@ -188,7 +190,7 @@ Bulk-insert multiple entity registry entries in one call.
 ```json
 {
   "seeded": 12,
-  "tokens": ["[PERSON_3a12b4cd]", "[PERSON_7e2f1a9b]"]
+  "tokens": ["[PERSON_1]", "[PERSON_2]"]
 }
 ```
 

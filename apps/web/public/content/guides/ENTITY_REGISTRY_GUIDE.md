@@ -26,9 +26,9 @@
 By default, OCULTAR's vault is a string-to-token map. Every unique string produces an independent token based on its HMAC-SHA256 hash:
 
 ```
-"John"     → [PERSON_8d9c1b15]
-"Doe"      → [PERSON_7f83b1aa]
-"John Doe" → [PERSON_91ba89fc]
+"John"     → [PERSON_8d9c1b15a3e2f704]
+"Doe"      → [PERSON_7f83b1aa9c4e2d10]
+"John Doe" → [PERSON_91ba89fc3a7b5e08]
 ```
 
 This causes two critical failures when processing real-world documents:
@@ -50,7 +50,7 @@ The Entity Registry is a persistent, session-spanning identity layer built into 
 "J. Doe"   → [PERSON_1]   ←
 ```
 
-Canonical tokens use a **numeric suffix** (`[PERSON_1]`, `[PERSON_2]`) — distinct from the 8-char hex suffix of hash-based tokens (`[PERSON_8d9c1b15]`). This distinction lets the system route rehydration correctly.
+Canonical tokens use a **numeric suffix** (`[PERSON_1]`, `[PERSON_2]`) — distinct from the 16-char hex suffix of hash-based tokens (`[PERSON_8d9c1b15a3e2f704]`). This distinction lets the system route rehydration correctly.
 
 ---
 
@@ -71,7 +71,7 @@ entityRegistryTypes["PERSON"] = true?
          │         │ Miss  → fall through        │
          │         └─────────────────────────────┘
          │
-         └─ NO  → SHA256("John")[:8] → [PERSON_8d9c1b15]   ← hash token
+         └─ NO  → HMAC-SHA256("John")[:16] → [PERSON_8d9c1b15a3e2f704]   ← hash token
 ```
 
 Entity tokens are stored in `canonical_entities` (not the `vault` table) and rehydrate directly to the `canonical_name` without AES decryption.
@@ -228,7 +228,7 @@ Two token formats now exist in the system:
 | Hash token | `[PERSON_8d9c1b151234abcd]` | HMAC-SHA256 of original value, 16-char hex | AES-256-GCM decrypt from `vault` table |
 | Entity token | `[PERSON_1]` | Sequential integer, operator-registered | Direct lookup from `canonical_entities` table |
 
-Both formats are valid OCULTAR tokens. They coexist in the same document — a document may contain both `[PERSON_1]` (a registered patient) and `[EMAIL_9c8f7a1b]` (an email detected at runtime).
+Both formats are valid OCULTAR tokens. They coexist in the same document — a document may contain both `[PERSON_1]` (a registered patient) and `[EMAIL_9c8f7a1b2d3e4f50]` (an email detected at runtime).
 
 The rehydration layer (`DecryptToken`) checks the numeric suffix regex first and routes accordingly. No configuration is required — the routing is automatic.
 

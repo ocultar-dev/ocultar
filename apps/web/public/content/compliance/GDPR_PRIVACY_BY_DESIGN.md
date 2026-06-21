@@ -134,7 +134,7 @@ The following template may be used as Annex 1 (Technical and Organisational Meas
 
 **Measure 1 — Pseudonymisation before transfer**
 
-All personal data is pseudonymised by the OCULTAR Refinery before transmission to the sub-processor. The sub-processor receives only opaque tokens (e.g. `[EMAIL_9c8f7a1b]`). The pseudonymisation key (vault master key) is held exclusively by the Controller and is not shared with the sub-processor.
+All personal data is pseudonymised by the OCULTAR Refinery before transmission to the sub-processor. The sub-processor receives only opaque tokens (e.g. `[EMAIL_9c8f7a1b2d3e4f50]`). The pseudonymisation key (vault master key) is held exclusively by the Controller and is not shared with the sub-processor.
 
 **Measure 2 — Zero-egress guarantee**
 

@@ -38,7 +38,7 @@ Ask Goose: `Refine this text before processing: [text with PII]`
 
 Goose will call `ocultar-pii` which redacts PII locally before any further processing.
 The tool returns the cleaned text with each PII value replaced by a deterministic token
-(e.g. `[EMAIL_9c8f7a1b]`).
+(e.g. `[EMAIL_9c8f7a1b2d3e4f50]`).
 
 ### Available tools
 

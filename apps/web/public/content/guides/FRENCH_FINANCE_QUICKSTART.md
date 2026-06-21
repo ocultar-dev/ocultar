@@ -83,12 +83,12 @@ Contact: jean.dupont@bpce.fr, tél. +33 6 12 34 56 78
 ### Expected Redacted Output
 
 ```
-Virement de 4 500 EUR depuis le compte de [PERSON_a1b2c3d4]
-(NIR: [FR_NIR_9f8e7d6c])
-vers [IBAN_12ab34cd].
-Société émettrice: [PERSON_5e4f3a2b]
-[FRANCE_SIRET_NUMBER_7c8d9e0f], TVA [EU_VAT_3a4b5c6d]
-Contact: [EMAIL_2b3c4d5e], tél. [PHONE_6f7a8b9c]
+Virement de 4 500 EUR depuis le compte de [PERSON_a1b2c3d4e5f6a7b8]
+(NIR: [FR_NIR_9f8e7d6c5b4a3928])
+vers [IBAN_12ab34cd56ef7809].
+Société émettrice: [PERSON_5e4f3a2b6c7d8e90]
+[FRANCE_SIRET_NUMBER_7c8d9e0f1a2b3c4d], TVA [EU_VAT_3a4b5c6d7e8f9012]
+Contact: [EMAIL_2b3c4d5e6f708192], tél. [PHONE_6f7a8b9c1d2e3f40]
 ```
 
 No original values reach the echo upstream or any external system.

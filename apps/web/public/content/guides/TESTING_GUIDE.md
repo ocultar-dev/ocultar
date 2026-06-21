@@ -94,7 +94,7 @@ tail -f audit.log
 
 You should see structured JSON entries like:
 ```json
-{"timestamp":"2026-03-01T18:00:00Z","actor":"127.0.0.1","action":"vaulted","token":"[EMAIL_3a9f2b01]"}
+{"timestamp":"2026-03-01T18:00:00Z","actor":"127.0.0.1","action":"vaulted","token":"[EMAIL_3a9f2b01c4e6f810]"}
 ```
 
 ---

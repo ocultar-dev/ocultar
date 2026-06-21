@@ -123,18 +123,18 @@ sequenceDiagram
     V-->>E: cache miss
     E->>E: HKDF(keyMaterial, salt) → derivedKey
     E->>E: Encrypt("john@example.com", derivedKey)
-    E->>V: StoreToken(hash, "[EMAIL_9c8f7a1b]", ciphertext)
+    E->>V: StoreToken(hash, "[EMAIL_9c8f7a1b2d3e4f50]", ciphertext)
     V-->>E: (true, nil) — inserted
 
-    E-->>P: {messages:[{content:"Email [EMAIL_9c8f7a1b]"}]}
+    E-->>P: {messages:[{content:"Email [EMAIL_9c8f7a1b2d3e4f50]"}]}
     Note over P: 2. Generate Audit-Ready Detection Metadata
 
     P->>P: Set X-Ocultar-Redacted: true
-    P->>U: POST /v1/chat/completions<br/>{messages:[{content:"Email [EMAIL_9c8f7a1b]"}]}
-    U-->>P: {choices:[{message:{content:"I'll email [EMAIL_9c8f7a1b]"}}]}
+    P->>U: POST /v1/chat/completions<br/>{messages:[{content:"Email [EMAIL_9c8f7a1b2d3e4f50]"}]}
+    U-->>P: {choices:[{message:{content:"I'll email [EMAIL_9c8f7a1b2d3e4f50]"}}]}
 
     Note over P: Response re-hydration (RBAC Checked)
-    P->>V: GetToken("[EMAIL_9c8f7a1b]_hash")
+    P->>V: GetToken("[EMAIL_9c8f7a1b2d3e4f50]_hash")
     V-->>P: ciphertext
     P->>P: Decrypt(ciphertext, masterKey) → "john@example.com"
     P->>P: Log to Tamper-proof Audit Trail
@@ -179,7 +179,7 @@ graph LR
 - Decrypted vault contents
 
 **What MAY leave the trusted zone:**
-- Token strings (e.g. `[EMAIL_9c8f7a1b]`) — these are safe; reversible only with the vault + master key.
+- Token strings (e.g. `[EMAIL_9c8f7a1b2d3e4f50]`) — these are safe; reversible only with the vault + master key.
 - Structured audit log entries (token strings only, never PII).
 
 ---
@@ -251,9 +251,9 @@ original PII: "john@example.com"
         │
         ▼
   HMAC-SHA256(key, "john@example.com")
-  = 9c8f7a1b3f2e4d6a...  (full 64-char hex)
+  = 9c8f7a1b2d3e4f50a1b2c3d4e5f6a7b8...  (full 64-char hex)
         │
-        ├──► Token: [EMAIL_9c8f7a1b]   ← first 8 hex chars (safe to expose)
+        ├──► Token: [EMAIL_9c8f7a1b2d3e4f50]   ← first 16 hex chars (safe to expose)
         │
         └──► Hash (full 64 chars): lookup key in vault table
 ```
@@ -275,7 +275,7 @@ The refinery checks Path B first for PERSON-class entity types. If the variant i
 
 | Format | Example | Rehydration |
 |---|---|---|
-| Hash token | `[EMAIL_9c8f7a1b]` | AES-256-GCM decrypt from `vault` table |
+| Hash token | `[EMAIL_9c8f7a1b2d3e4f50]` | AES-256-GCM decrypt from `vault` table |
 | Entity token | `[PERSON_1]` | Direct lookup from `canonical_entities` — no decryption |
 
 **Determinism (Path A):** The same PII always produces the same hash token — relational integrity is preserved across records. **Stability (Path B):** The same canonical name always produces the same numeric token — operator-seeded identities are stable across sessions and restarts.

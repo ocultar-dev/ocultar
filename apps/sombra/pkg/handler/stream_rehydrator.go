@@ -8,18 +8,18 @@ import (
 	"github.com/ocultar-dev/ocultar/vault"
 )
 
-// Vault tokens have the form [TYPE_8hexchars], e.g. [PERSON_ab3c12ef].
+// Vault tokens have the form [TYPE_16hexchars], e.g. [PERSON_ab3c12ef4d5e6f70].
 // Both regexes below are anchored to the start of the string for efficient use
 // against the tail of the accumulated buffer.
 var (
 	// completeToken matches a fully-formed vault token at the start of a string.
-	completeToken = regexp.MustCompile(`^\[[A-Z_]+_[0-9a-f]{8}\]`)
+	completeToken = regexp.MustCompile(`^\[[A-Z_]+_[0-9a-f]{16}\]`)
 
 	// incompleteToken matches text that looks like the opening of a vault token
 	// but is not yet complete. Used to detect where to hold the buffer.
-	// Matches: "[", "[PERSON", "[PERSON_", "[PERSON_ab12"
+	// Matches: "[", "[PERSON", "[PERSON_", "[PERSON_ab3c12ef4d5e6f"
 	// Does NOT match: "[markdown text]", "[1234]" (lowercase / digit after bracket)
-	incompleteToken = regexp.MustCompile(`^\[[A-Z_]*(_[0-9a-f]{0,8})?$`)
+	incompleteToken = regexp.MustCompile(`^\[[A-Z_]*(_[0-9a-f]{0,16})?$`)
 )
 
 // SplitAtTokenBoundary splits s into:
@@ -52,9 +52,9 @@ func SplitAtTokenBoundary(s string) (safe, hold string) {
 // StreamRehydrator accumulates upstream SSE text deltas and emits rehydrated
 // text that is safe to forward to the client without exposing vault token syntax.
 //
-// Problem: a vault token like [PERSON_ab3c12ef] may arrive split across multiple
-// upstream chunks ("[PERSON_" in one chunk, "ab3c12ef]" in the next). Emitting
-// either half would expose raw vault syntax to the client.
+// Problem: a vault token like [PERSON_ab3c12ef4d5e6f70] may arrive split across
+// multiple upstream chunks ("[PERSON_ab3c12" in one chunk, "ef4d5e6f70]" in the
+// next). Emitting either half would expose raw vault syntax to the client.
 //
 // Solution: after each Push(), the largest safe prefix — everything up to the
 // last '[' that could be the start of an incomplete token — is rehydrated and

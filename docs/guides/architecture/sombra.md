@@ -60,9 +60,9 @@ sequenceDiagram
     C->>S: POST /v1/chat/completions {stream:false}
     S->>R: RefineString(message content)
     R->>V: Store PII → vault token
-    R-->>S: masked message [PERSON_ab3c12ef]
+    R-->>S: masked message [PERSON_ab3c12ef4d5e6f70]
     S->>A: POST with masked messages
-    A-->>S: "Hello [PERSON_ab3c12ef]"
+    A-->>S: "Hello [PERSON_ab3c12ef4d5e6f70]"
     S->>V: RehydrateString(response)
     V-->>S: "Hello Jean Dupont"
     S-->>C: OpenAI JSON response

@@ -19,7 +19,8 @@
 6. [HTTP Endpoints](#6-http-endpoints)
    - [POST /api/refine](#61-post-apirefine)
    - [POST /api/refine/file](#62-post-apirefinefile)
-   - [GET /api/compliance/evidence](#612-get-apicomplianceevidence)
+   - [POST /api/reveal](#63-post-apireveal)
+   - [GET /api/compliance/evidence](#613-get-apicomplianceevidence)
 7. [HTTP Proxy Mode](#7-http-proxy-mode)
 8. [Error Reference](#8-error-reference)
 
@@ -311,14 +312,14 @@ Decrypts a hex-encoded AES-256-GCM ciphertext produced by `Encrypt`. Returns the
 func DecryptToken(v vault.Provider, masterKey []byte, token string) (string, error)
 ```
 
-Looks up an OCULTAR token (e.g. `[EMAIL_af2101fb]` or `[PERSON_1]`) in the vault and returns the original PII string.
+Looks up an OCULTAR token (e.g. `[EMAIL_af2101fb2d3e4f50]` or `[PERSON_1]`) in the vault and returns the original PII string.
 
 **Behaviour — two routing paths based on token format:**
 
 | Token format | Example | Path |
 |---|---|---|
 | Entity token (numeric suffix) | `[PERSON_1]` | `GetEntityByToken` → returns `canonical_name` directly. No AES decryption. |
-| Hash token (8-char hex suffix) | `[EMAIL_9c8f7a1b]` | Reverse lookup in `vault` table → AES-256-GCM decryption. |
+| Hash token (16-char hex suffix) | `[EMAIL_9c8f7a1b2d3e4f50]` | Reverse lookup in `vault` table → AES-256-GCM decryption. |
 
 The numeric-suffix regex (`^\[([A-Z_]+)_(\d+)\]$`) is checked first. If it matches, the entity registry path is taken. If the token is not found in `canonical_entities`, execution falls through to the AES path.
 
@@ -547,21 +548,21 @@ Call Sarah at +33 6 12 34 56 78 or email sarah@example.com
 
 ```json
 {
-  "refined": "Call Sarah at [PHONE_a1b2c3d4] or email [EMAIL_9c8f7a1b]",
+  "refined": "Call Sarah at [PHONE_a1b2c3d4e5f6a7b8] or email [EMAIL_9c8f7a1b2d3e4f50]",
   "report": {
     "mode": "serve",
     "files_scanned": 1,
     "pii_hits": [
       {
         "entity": "PHONE",
-        "value_hash": "a1b2c3d4e5f6...",
+        "value_hash": "a1b2c3d4e5f6a7b8...",
         "confidence": 1.0,
         "method": ["phone"],
         "location": "13-31"
       },
       {
         "entity": "EMAIL",
-        "value_hash": "9c8f7a1b2d3e...",
+        "value_hash": "9c8f7a1b2d3e4f50...",
         "confidence": 1.0,
         "method": ["regex"],
         "location": "38-56"
@@ -620,51 +621,80 @@ curl -F "file=@my_data.csv" http://localhost:9090/api/refine/file > cleaned.csv
 
 ---
 
-> **Auth:** Sections 6.3–6.9 require `Authorization: Bearer <OCU_AUDITOR_TOKEN>`. They return `403` if `OCU_AUDITOR_TOKEN` is not configured on the server, and `401` if the header is missing or doesn't match. (6.10–6.11 are read-only and remain unauthenticated.)
+> **Auth:** Sections 6.3–6.10 require `Authorization: Bearer <OCU_AUDITOR_TOKEN>`. They return `403` if `OCU_AUDITOR_TOKEN` is not configured on the server, and `401` if the header is missing or doesn't match. (6.11–6.12 are read-only and remain unauthenticated.)
 
-### 6.3 `GET /api/config`
+### 6.3 `POST /api/reveal`
+
+Restores one or more vault tokens back to their original plaintext values. Backs `refinery.DecryptToken` (§2.4) over HTTP.
+
+**Authentication:** `Authorization: Bearer <OCU_AUDITOR_TOKEN>` required. Returns `403` if `OCU_AUDITOR_TOKEN` is not configured on the server, `401` if the header is missing or doesn't match.
+
+Every call is recorded in the immutable Ed25519-signed audit log (actor, tokens requested, timestamp).
+
+**Request:**
+
+```json
+{ "tokens": ["[PERSON_3a12b4cd91e7f6a0]", "[EMAIL_9c8f7a1b2d3e4f50]"] }
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "results": {
+    "[PERSON_3a12b4cd91e7f6a0]": "Alice Martin",
+    "[EMAIL_9c8f7a1b2d3e4f50]": "alice@example.com"
+  }
+}
+```
+
+Tokens not found in the vault return the literal string `"ERR_NOT_FOUND"` as their value in `results` — never an error, so a partial match list never reveals which tokens belong to the caller's own vault by side channel.
+
+---
+
+### 6.4 `GET /api/config`
 
 Returns the full current configuration (`config.yaml` state).
 
-### 6.4 `GET /api/config/regex`
+### 6.5 `GET /api/config/regex`
 
 Returns the list of active Regex rules, including their `canonical_mapping` (Google InfoType).
 
-### 6.5 `POST /api/config/regex`
+### 6.6 `POST /api/config/regex`
 
 Adds or updates a Regex rule. Persists to `config.yaml`.
 **Body**: `{"type": "CUSTOM_ID", "pattern": "\\b[0-9]{5}\\b"}`
 
-### 6.6 `DELETE /api/config/regex`
+### 6.7 `DELETE /api/config/regex`
 
 Removes a Regex rule.
 **Body**: `{"type": "CUSTOM_ID"}`
 
-### 6.7 `GET /api/config/dictionary`
+### 6.8 `GET /api/config/dictionary`
 
 Returns all dictionary categories and their terms.
 
-### 6.8 `POST /api/config/dictionary`
+### 6.9 `POST /api/config/dictionary`
 
 Adds a term to a dictionary category.
 **Body**: `{"type": "VIP", "term": "Internal Project Name"}`
 
-### 6.9 `DELETE /api/config/dictionary`
+### 6.10 `DELETE /api/config/dictionary`
 
 Removes a category (and all its terms).
 **Body**: `{"type": "VIP"}`
 
-### 6.10 `GET /api/config/mapping`
+### 6.11 `GET /api/config/mapping`
 
 Returns the **Canonical Entity Registry**: a complete mapping of all OCULTAR internal identifiers to Google Cloud DLP InfoTypes.
 
-### 6.11 `GET /api/config/system`
+### 6.12 `GET /api/config/system`
 
 Returns system-level limits (`max_concurrency`, `queue_size`).
 
 ---
 
-### 6.12 `GET /api/compliance/evidence`
+### 6.13 `GET /api/compliance/evidence`
 
 Returns a compliance evidence snapshot suitable for polling by SOC 2 / ISO 27001 audit tools (Vanta, Drata, Secureframe, or any custom collector). No authentication is required by default — protect with a network boundary or reverse proxy ACL in production.
 
@@ -797,5 +827,5 @@ connectors:
 
 ### Redaction vs. Stripping
 
-- **Redaction**: Replaces PII with a token like `[PERSON_1234abcd]`. Useful for tasks where the AI needs to know *that* a person was mentioned without knowing *who*.
+- **Redaction**: Replaces PII with a token like `[PERSON_1234abcd5678ef90]`. Useful for tasks where the AI needs to know *that* a person was mentioned without knowing *who*.
 - **Stripping**: Replaces tokens with a generic placeholder like `[STRIPPED_SSN]`. Used for high-sensitivity data where the AI should not even see the pseudonymized token.

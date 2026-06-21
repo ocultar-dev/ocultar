@@ -20,7 +20,7 @@ This document is intended for the Data Protection Officer (DPO), legal counsel, 
 When a user or application sends a request to an AI model (e.g., "Analyze this contract: Jean Dupont, IBAN FR76 3000 6000 0112 3456 7890 189..."), OCULTAR intercepts the request **before it reaches the model**. It:
 
 1. **Detects** every piece of personal data in the payload using a multi-tier engine (deterministic regex, Luhn/MOD97 checksum validation, libphonenumber, heuristics, and optional AI NER).
-2. **Replaces** each detected value with a deterministic pseudonymous token, e.g., `[IBAN_12ab34cd]`.
+2. **Replaces** each detected value with a deterministic pseudonymous token, e.g., `[IBAN_12ab34cd56ef7809]`.
 3. **Stores** the encrypted original value in a local vault (AES-256-GCM). The vault never leaves your infrastructure.
 4. **Forwards** the tokenized payload to the AI model. The model receives no personal data.
 5. **Optionally re-hydrates** the AI response — replacing tokens back with original values — for authorized callers only.
