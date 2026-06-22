@@ -52,7 +52,16 @@ OCULTAR does not integrate with any third-party services by default. If you conf
 
 ## 7. Data Retention and Deletion
 
-Vault contents and audit logs are stored on your infrastructure and subject to your own retention policies. You can delete them at any time. OCULTAR provides no mechanism to transmit this data externally and retains no copy of it.
+Vault contents and audit logs are stored on your infrastructure. OCULTAR provides no mechanism to transmit this data externally and retains no copy of it.
+
+By default, OCULTAR enforces an automatic retention policy on your behalf, in support of GDPR Art. 5(1)(e) storage limitation:
+
+- **Vault tokens**: each tokenized PII record (the encrypted value behind a `[TYPE_token]`) is automatically purged 90 days after creation. This is configurable via `vault_retention_days` in `configs/config.yaml`, or disabled entirely by setting `retention_enabled: false`.
+- **Audit logs**: both the plain JSON audit log (`audit.log`) and the cryptographically signed `ImmutableLogger` chain (used by the Proxy and Sombra Gateway) rotate once they exceed 50MB (`audit_log_max_size_mb`) to a timestamped archive file, and rotated archives are deleted after 365 days (`audit_log_archive_retention_days`). Rotation of the signed log preserves tamper-evidence: a signed checkpoint event marks the rotation boundary, so the hash chain remains verifiable across archived segments.
+- **Entity Registry exemption**: the Persistent Entity Registry (canonical name ↔ token mappings used to unify name variants across documents) is long-lived by design and is **not** subject to the vault token TTL above.
+- **On-demand erasure**: an authorized operator (bearing `OCU_AUDITOR_TOKEN`) can delete specific vault tokens immediately via `POST /api/vault/delete`, supporting data-subject erasure requests ahead of the automatic TTL.
+
+You can adjust or disable any of this retention behavior at any time; it governs your own infrastructure, not a remote system.
 
 ---
 

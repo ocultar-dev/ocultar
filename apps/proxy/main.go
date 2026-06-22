@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ocultar-dev/ocultar/pkg/audit"
 	"github.com/ocultar-dev/ocultar/pkg/config"
@@ -109,11 +111,39 @@ func main() {
 			log.Fatalf("[FATAL] Failed to open audit log at %s: %v", logPath, err)
 		}
 		defer immutableLog.Close()
+		if config.Global.RetentionEnabled {
+			immutableLog.SetRotation(
+				int64(config.Global.AuditLogMaxSizeMB)*1024*1024,
+				time.Duration(config.Global.AuditLogArchiveRetentionDays)*24*time.Hour,
+			)
+		}
 		eng.SetAuditLogger(&auditAdapter{logger: immutableLog})
 		auditActive = true
 		log.Printf("[INFO] Immutable audit log active: %s (public key: %s)", logPath, immutableLog.PublicKeyHex())
 	} else {
 		eng.SetAuditLogger(&refinery.NoopAuditLogger{})
+	}
+
+	// GDPR Art. 5(1)(e) storage limitation: periodically purge vault rows
+	// older than VaultRetentionDays. Never touches the Entity Registry.
+	if config.Global.RetentionEnabled {
+		retentionCtx, cancelRetention := context.WithCancel(context.Background())
+		defer cancelRetention()
+		go vault.RunRetentionLoop(
+			retentionCtx,
+			vaultProvider,
+			time.Duration(config.Global.RetentionSweepMinutes)*time.Minute,
+			time.Duration(config.Global.VaultRetentionDays)*24*time.Hour,
+			func(deleted int64, err error) {
+				if err != nil {
+					eng.AuditLogger.Log("system", "retention_sweep", "N/A", err.Error())
+					return
+				}
+				if deleted > 0 {
+					eng.AuditLogger.Log("system", "retention_sweep", "N/A", fmt.Sprintf("purged %d expired vault token(s)", deleted))
+				}
+			},
+		)
 	}
 
 	// Tier 2 AI NER — active when SLM_SIDECAR_URL is set (defaults to localhost:8085).

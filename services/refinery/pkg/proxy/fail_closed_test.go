@@ -34,6 +34,8 @@ func (m *MockVault) SeedEntities(entries []vault.EntitySeed) error    { return n
 func (m *MockVault) ListEntities() ([]vault.EntityRecord, error)      { return nil, nil }
 func (m *MockVault) CountAll() int64                                   { return 0 }
 func (m *MockVault) Close() error                                      { return nil }
+func (m *MockVault) PurgeExpiredTokens(olderThan time.Time) (int64, error) { return 0, nil }
+func (m *MockVault) DeleteToken(token string) (bool, error)                { return false, nil }
 
 // MockAIScanner is a stub Scanner that can be configured to fail.
 type MockAIScanner struct {

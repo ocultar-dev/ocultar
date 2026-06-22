@@ -187,6 +187,24 @@ The vault exposes a **Persistent Entity Registry** that maps name variants to a 
 
 Pre-seed entities via `RegisterEntity` before processing documents where identity fragmentation is expected (e.g., French finance invoices with first/last name on separate lines).
 
+### Data Retention
+
+Enforces GDPR Art. 5(1)(e) storage limitation — enabled by default, configurable via `configs/config.yaml`:
+
+| Key | Default | Purpose |
+|---|---|---|
+| `retention_enabled` | `true` | Master switch for all automatic purging below |
+| `vault_retention_days` | `90` | Vault PII token TTL (`vault.Provider.PurgeExpiredTokens`, run by `vault.RunRetentionLoop`) |
+| `retention_sweep_minutes` | `60` | How often the background purge loop runs |
+| `audit_log_max_size_mb` | `50` | Size threshold for audit log rotation |
+| `audit_log_archive_retention_days` | `365` | How long rotated audit log archives are kept before deletion |
+
+The Entity Registry (`canonical_entities`/`entity_variants`) is exempt from the vault TTL — it's long-lived cross-session identity-unification data, not per-PII-token storage.
+
+`BasicFileLogger` (plain JSON, refinery CLI server) rotates via simple rename-to-archive. `ImmutableLogger` (hash-chained, Proxy/Sombra) rotates via a signed `CHECKPOINT_ROTATE`/`CHECKPOINT_CONTINUE` checkpoint pair so the tamper-evident chain stays verifiable across the file boundary — see `services/refinery/pkg/audit/immutable.go`.
+
+`POST /api/vault/delete` (refinery CLI server, alongside `/api/reveal`) supports on-demand erasure of specific vault tokens ahead of the TTL, gated by the same `OCU_AUDITOR_TOKEN` Bearer auth. It only deletes vault rows — it never cascades into the Entity Registry.
+
 ### Frontend
 
 `apps/web` is an independent Vite + React 19 + Tailwind CSS 4 app, served separately from the Go backend.

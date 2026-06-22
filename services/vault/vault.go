@@ -5,6 +5,7 @@ package vault
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ocultar-dev/ocultar/pkg/config"
 )
@@ -44,6 +45,17 @@ type Provider interface {
 
 	// Close releases any open database connections.
 	Close() error
+
+	// PurgeExpiredTokens deletes vault rows (pii_hash -> token/encrypted_pii)
+	// whose creation time predates olderThan. Returns the number of rows
+	// deleted. Never touches the Entity Registry, which is long-lived by design.
+	PurgeExpiredTokens(olderThan time.Time) (deleted int64, err error)
+
+	// DeleteToken removes a single vault row by its token string (e.g.
+	// "[EMAIL_a1b2c3d4]"), for on-demand data-subject erasure requests.
+	// Returns (true, nil) if a row was deleted, (false, nil) if no matching
+	// row existed.
+	DeleteToken(token string) (deleted bool, err error)
 
 	// --- Entity Registry (Path 3) ---
 

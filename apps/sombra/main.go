@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -124,6 +125,34 @@ func main() {
 	} else {
 		log.Printf("[INFO] Immutable Audit Log active. PubKey: %s", auditor.PublicKeyHex())
 		defer auditor.Close()
+		if config.Global.RetentionEnabled {
+			auditor.SetRotation(
+				int64(config.Global.AuditLogMaxSizeMB)*1024*1024,
+				time.Duration(config.Global.AuditLogArchiveRetentionDays)*24*time.Hour,
+			)
+		}
+	}
+
+	// GDPR Art. 5(1)(e) storage limitation: periodically purge vault rows
+	// older than VaultRetentionDays. Never touches the Entity Registry.
+	if config.Global.RetentionEnabled {
+		retentionCtx, cancelRetention := context.WithCancel(context.Background())
+		defer cancelRetention()
+		go vault.RunRetentionLoop(
+			retentionCtx,
+			v,
+			time.Duration(config.Global.RetentionSweepMinutes)*time.Minute,
+			time.Duration(config.Global.VaultRetentionDays)*24*time.Hour,
+			func(deleted int64, err error) {
+				if err != nil {
+					log.Printf("[WARN] retention sweep error: %v", err)
+					return
+				}
+				if deleted > 0 {
+					log.Printf("[INFO] retention sweep purged %d expired vault token(s)", deleted)
+				}
+			},
+		)
 	}
 
 	g := handler.NewGateway(eng, v, masterKey, r, auditor)

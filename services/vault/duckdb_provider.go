@@ -34,6 +34,20 @@ func newDuckDBProvider(vaultPath string) (*duckdbProvider, error) {
 		return nil, err
 	}
 
+	// created_at backs retention.go's TTL purge (PurgeExpiredTokens). Added via
+	// ALTER rather than the CREATE TABLE above so upgrades on an existing vault
+	// pick it up too. Existing rows are backfilled to "now" rather than left
+	// NULL, giving them a fresh retention window instead of becoming instantly
+	// eligible for purge on the first sweep after upgrade.
+	if _, err = db.Exec(`ALTER TABLE vault ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT current_timestamp`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("vault.created_at migration: %w", err)
+	}
+	if _, err = db.Exec(`UPDATE vault SET created_at = current_timestamp WHERE created_at IS NULL`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("vault.created_at backfill: %w", err)
+	}
+
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS canonical_entities (
 			id             VARCHAR PRIMARY KEY,
@@ -128,6 +142,48 @@ func (p *duckdbProvider) StoreToken(hash, token, encryptedPII string) (bool, err
 // CountAll returns the total number of records currently stored in the DuckDB vault.
 func (p *duckdbProvider) CountAll() int64 {
 	return p.count.Load()
+}
+
+// PurgeExpiredTokens deletes vault rows whose created_at predates olderThan.
+// Only ever targets the vault table — the Entity Registry (canonical_entities/
+// entity_variants) is long-lived by design and is never purged by TTL.
+func (p *duckdbProvider) PurgeExpiredTokens(olderThan time.Time) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	res, err := p.db.ExecContext(ctx, `DELETE FROM vault WHERE created_at < ?`, olderThan)
+	if err != nil {
+		return 0, fmt.Errorf("[vault/duckdb] PurgeExpiredTokens: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("[vault/duckdb] PurgeExpiredTokens rows affected: %w", err)
+	}
+	if rows > 0 {
+		p.count.Add(-rows)
+	}
+	return rows, nil
+}
+
+// DeleteToken removes a single vault row by its token string (e.g.
+// "[EMAIL_a1b2c3d4]"), supporting on-demand data-subject erasure requests.
+func (p *duckdbProvider) DeleteToken(token string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	res, err := p.db.ExecContext(ctx, `DELETE FROM vault WHERE token = ?`, token)
+	if err != nil {
+		return false, fmt.Errorf("[vault/duckdb] DeleteToken: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("[vault/duckdb] DeleteToken rows affected: %w", err)
+	}
+	if rows > 0 {
+		p.count.Add(-1)
+		return true, nil
+	}
+	return false, nil
 }
 
 // Close terminates the DuckDB connection explicitly.

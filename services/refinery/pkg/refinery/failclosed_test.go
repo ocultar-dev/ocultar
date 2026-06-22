@@ -35,6 +35,8 @@ func (p *passingVault) LookupVariant(name string) (string, bool)                
 func (p *passingVault) GetEntityByToken(tok string) (string, bool)               { return "", false }
 func (p *passingVault) SeedEntities(e []vault.EntitySeed) error                  { return nil }
 func (p *passingVault) ListEntities() ([]vault.EntityRecord, error)              { return nil, nil }
+func (p *passingVault) PurgeExpiredTokens(olderThan time.Time) (int64, error)    { return 0, nil }
+func (p *passingVault) DeleteToken(token string) (bool, error)                   { return false, nil }
 
 type failingVault struct{}
 
@@ -49,6 +51,8 @@ func (f *failingVault) LookupVariant(name string) (string, bool)                
 func (f *failingVault) GetEntityByToken(tok string) (string, bool)               { return "", false }
 func (f *failingVault) SeedEntities(e []vault.EntitySeed) error                  { return nil }
 func (f *failingVault) ListEntities() ([]vault.EntityRecord, error)              { return nil, nil }
+func (f *failingVault) PurgeExpiredTokens(olderThan time.Time) (int64, error)    { return 0, nil }
+func (f *failingVault) DeleteToken(token string) (bool, error)                   { return false, nil }
 
 type slowVault struct{ delay time.Duration }
 
@@ -64,6 +68,8 @@ func (s *slowVault) LookupVariant(name string) (string, bool)                 { 
 func (s *slowVault) GetEntityByToken(tok string) (string, bool)               { return "", false }
 func (s *slowVault) SeedEntities(e []vault.EntitySeed) error                  { return nil }
 func (s *slowVault) ListEntities() ([]vault.EntityRecord, error)              { return nil, nil }
+func (s *slowVault) PurgeExpiredTokens(olderThan time.Time) (int64, error)    { return 0, nil }
+func (s *slowVault) DeleteToken(token string) (bool, error)                   { return false, nil }
 
 // ── Mock AI scanner ───────────────────────────────────────────────────────────
 

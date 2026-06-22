@@ -95,6 +95,24 @@ type Settings struct {
 	PrometheusEnabled bool `yaml:"prometheus_enabled" json:"prometheus_enabled"`
 	// JWTSecret is the HS256 secret used to validate Bearer tokens in Sombra.
 	JWTSecret string `yaml:"jwt_secret" json:"jwt_secret"`
+
+	// --- Data Retention (GDPR Art. 5(1)(e) storage limitation) ---
+
+	// RetentionEnabled turns on automatic TTL purge of vault PII rows and
+	// audit-log rotation. Does NOT apply to the Entity Registry
+	// (canonical_entities/entity_variants), which is long-lived by design.
+	RetentionEnabled bool `yaml:"retention_enabled" json:"retention_enabled"`
+	// VaultRetentionDays is how long a vault token (pii_hash -> encrypted PII)
+	// is kept before the retention loop purges it.
+	VaultRetentionDays int `yaml:"vault_retention_days" json:"vault_retention_days"`
+	// RetentionSweepMinutes is how often the background purge loop runs.
+	RetentionSweepMinutes int `yaml:"retention_sweep_minutes" json:"retention_sweep_minutes"`
+	// AuditLogMaxSizeMB is the size threshold at which an audit log file
+	// rotates to a timestamped archive.
+	AuditLogMaxSizeMB int `yaml:"audit_log_max_size_mb" json:"audit_log_max_size_mb"`
+	// AuditLogArchiveRetentionDays is how long rotated audit log archives
+	// are kept on disk before being deleted.
+	AuditLogArchiveRetentionDays int `yaml:"audit_log_archive_retention_days" json:"audit_log_archive_retention_days"`
 }
 
 var Global Settings
@@ -129,6 +147,14 @@ func initDefaultConfig() {
 		MaxPayloadSize:           5 * 1024 * 1024, // 5MB
 		PrometheusEnabled:        true,
 		JWTSecret:                os.Getenv("OCU_JWT_SECRET"),
+
+		// Data Retention Defaults — enabled out of the box so the GDPR
+		// storage-limitation gap is closed by default, not just configurable.
+		RetentionEnabled:             true,
+		VaultRetentionDays:           90,
+		RetentionSweepMinutes:        60,
+		AuditLogMaxSizeMB:            50,
+		AuditLogArchiveRetentionDays: 365,
 	}
 	loadProtectedEntities()
 	LoadRegulatoryPolicy()

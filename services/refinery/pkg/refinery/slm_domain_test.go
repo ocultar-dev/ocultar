@@ -2,6 +2,7 @@ package refinery
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ocultar-dev/ocultar/vault"
 )
@@ -43,6 +44,8 @@ func (m *MockVault) LookupVariant(variantName string) (string, bool)    { return
 func (m *MockVault) GetEntityByToken(token string) (string, bool)       { return "", false }
 func (m *MockVault) SeedEntities(entries []vault.EntitySeed) error      { return nil }
 func (m *MockVault) ListEntities() ([]vault.EntityRecord, error)        { return nil, nil }
+func (m *MockVault) PurgeExpiredTokens(olderThan time.Time) (int64, error) { return 0, nil }
+func (m *MockVault) DeleteToken(token string) (bool, error)                { return false, nil }
 
 func newTestEng(scanner *DomainMockScanner) *Refinery {
 	eng := NewRefinery(&MockVault{}, []byte("01234567890123456789012345678901"))

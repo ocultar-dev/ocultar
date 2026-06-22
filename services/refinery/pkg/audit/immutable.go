@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -26,11 +27,14 @@ type Event struct {
 // ImmutableLogger handles cryptographically signed append-only logging
 // to satisfy NIS2 and GDPR Article 30 requirements.
 type ImmutableLogger struct {
-	mu         sync.Mutex
-	privateKey ed25519.PrivateKey
-	publicKey  ed25519.PublicKey
-	logFile    *os.File
-	lastHash   string
+	mu            sync.Mutex
+	privateKey    ed25519.PrivateKey
+	publicKey     ed25519.PublicKey
+	path          string
+	logFile       *os.File
+	lastHash      string
+	maxSizeBytes  int64
+	archiveMaxAge time.Duration
 }
 
 // NewImmutableLogger initializes a logger on disk with an ephemeral Ed25519
@@ -73,9 +77,25 @@ func newLogger(filePath string, priv ed25519.PrivateKey) (*ImmutableLogger, erro
 	return &ImmutableLogger{
 		privateKey: priv,
 		publicKey:  priv.Public().(ed25519.PublicKey),
+		path:       filePath,
 		logFile:    f,
 		lastHash:   "0000000000000000000000000000000000000000000000000000000000000000",
 	}, nil
+}
+
+// SetRotation configures size-based rotation of the active log file. Once it
+// exceeds maxSizeBytes, a signed "CHECKPOINT_ROTATE" event is appended to the
+// current file, which is then archived to a timestamped "<path>.<ts>.archived"
+// file; a fresh file is opened at path and a "CHECKPOINT_CONTINUE" event is
+// written as its first entry, carrying the in-memory hash chain forward so no
+// signed event is ever mutated or deleted. Archived files older than
+// archiveMaxAge are then removed. Leaving maxSizeBytes <= 0 (the default)
+// disables rotation entirely, preserving existing behavior.
+func (l *ImmutableLogger) SetRotation(maxSizeBytes int64, archiveMaxAge time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.maxSizeBytes = maxSizeBytes
+	l.archiveMaxAge = archiveMaxAge
 }
 
 // Log records an event, chaining it to the previous hash and signing it.
@@ -83,6 +103,15 @@ func (l *ImmutableLogger) Log(actor, action, resource, status, details string) e
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	if err := l.logLocked(actor, action, resource, status, details); err != nil {
+		return err
+	}
+	return l.rotateIfNeededLocked()
+}
+
+// logLocked writes a single signed, chained event to the currently open log
+// file. Callers must hold l.mu.
+func (l *ImmutableLogger) logLocked(actor, action, resource, status, details string) error {
 	e := Event{
 		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Actor:     actor,
@@ -112,9 +141,81 @@ func (l *ImmutableLogger) Log(actor, action, resource, status, details string) e
 	if _, err := l.logFile.Write(append(logData, '\n')); err != nil {
 		return fmt.Errorf("audit write failed: %v", err)
 	}
-	
+
 	// Ensure it hits disk immediately (sync/fsync)
 	return l.logFile.Sync()
+}
+
+// rotateIfNeededLocked archives the active log file once it exceeds
+// l.maxSizeBytes, preserving hash-chain continuity across the rotation
+// boundary via signed checkpoint events. Callers must hold l.mu.
+func (l *ImmutableLogger) rotateIfNeededLocked() error {
+	if l.maxSizeBytes <= 0 {
+		return nil
+	}
+
+	info, err := l.logFile.Stat()
+	if err != nil {
+		return fmt.Errorf("audit rotation stat failed: %w", err)
+	}
+	if info.Size() < l.maxSizeBytes {
+		return nil
+	}
+
+	// Sign the rotation boundary into the file about to be archived, so the
+	// boundary itself is part of the verifiable chain.
+	if err := l.logLocked("system", "CHECKPOINT_ROTATE", l.path, "ALLOW", "rotating audit log"); err != nil {
+		return fmt.Errorf("audit rotation checkpoint failed: %w", err)
+	}
+
+	if err := l.logFile.Close(); err != nil {
+		return fmt.Errorf("audit rotation close failed: %w", err)
+	}
+
+	archivePath := fmt.Sprintf("%s.%s.archived", l.path, time.Now().UTC().Format("20060102T150405.000000000"))
+	if err := os.Rename(l.path, archivePath); err != nil {
+		return fmt.Errorf("audit rotation rename failed: %w", err)
+	}
+
+	f, err := os.OpenFile(l.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("audit rotation reopen failed: %w", err)
+	}
+	l.logFile = f
+
+	// First entry of the new file continues the chain: PrevHash is the
+	// rotate-checkpoint's hash, already carried in l.lastHash.
+	if err := l.logLocked("system", "CHECKPOINT_CONTINUE", archivePath, "ALLOW", "continuing audit log after rotation"); err != nil {
+		return fmt.Errorf("audit rotation continuation failed: %w", err)
+	}
+
+	l.purgeOldArchivesLocked()
+	return nil
+}
+
+// purgeOldArchivesLocked deletes archived log segments older than
+// l.archiveMaxAge. Only ever removes whole, already-closed archive files —
+// never an in-chain signed event in the active log. Callers must hold l.mu.
+func (l *ImmutableLogger) purgeOldArchivesLocked() {
+	if l.archiveMaxAge <= 0 {
+		return
+	}
+
+	matches, err := filepath.Glob(l.path + ".*.archived")
+	if err != nil {
+		return
+	}
+
+	cutoff := time.Now().Add(-l.archiveMaxAge)
+	for _, m := range matches {
+		info, err := os.Stat(m)
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			os.Remove(m)
+		}
+	}
 }
 
 // Close gracefully closes the log file.

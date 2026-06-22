@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"encoding/csv"
 	"encoding/json"
@@ -70,7 +71,10 @@ func getMasterKey() []byte {
 
 // main is the entry point for the OCULTAR Refinery Refinery CLI and HTTP server.
 type BasicFileLogger struct {
-	path string
+	mu            sync.Mutex
+	path          string
+	maxSizeBytes  int64
+	archiveMaxAge time.Duration
 }
 
 func (l *BasicFileLogger) Init(path string) error {
@@ -78,7 +82,24 @@ func (l *BasicFileLogger) Init(path string) error {
 	return nil
 }
 
+// SetRotation configures size-based rotation for this plain JSON audit log.
+// Unlike ImmutableLogger's entries, these aren't hash-chained, so rotation is
+// a plain rename-and-purge with no checkpoint event needed. maxSizeBytes <= 0
+// (the default) disables rotation, preserving today's unbounded-growth
+// behavior for operators who opt out via RetentionEnabled=false.
+func (l *BasicFileLogger) SetRotation(maxSizeBytes int64, archiveMaxAge time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.maxSizeBytes = maxSizeBytes
+	l.archiveMaxAge = archiveMaxAge
+}
+
 func (l *BasicFileLogger) Log(user, action, result, mapping string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.rotateIfNeeded()
+
 	f, err := os.OpenFile(l.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600) //nolint:gosec // G703: path is operator-configured at startup, not derived from user input
 	if err != nil {
 		return
@@ -95,6 +116,52 @@ func (l *BasicFileLogger) Log(user, action, result, mapping string) {
 	bytes, _ := json.Marshal(entry)
 	if _, err := f.Write(append(bytes, '\n')); err != nil {
 		log.Printf("[AUDIT] failed to write audit entry: %v", err)
+	}
+}
+
+// rotateIfNeeded archives the current log file once it exceeds
+// l.maxSizeBytes, then purges archives older than l.archiveMaxAge. Callers
+// must hold l.mu.
+func (l *BasicFileLogger) rotateIfNeeded() {
+	if l.maxSizeBytes <= 0 {
+		return
+	}
+
+	info, err := os.Stat(l.path)
+	if err != nil || info.Size() < l.maxSizeBytes {
+		return
+	}
+
+	archivePath := fmt.Sprintf("%s.%s.archived", l.path, time.Now().UTC().Format("20060102T150405.000000000"))
+	if err := os.Rename(l.path, archivePath); err != nil {
+		log.Printf("[AUDIT] log rotation rename failed: %v", err)
+		return
+	}
+
+	l.purgeOldArchives()
+}
+
+// purgeOldArchives deletes rotated archive files older than l.archiveMaxAge.
+// Callers must hold l.mu.
+func (l *BasicFileLogger) purgeOldArchives() {
+	if l.archiveMaxAge <= 0 {
+		return
+	}
+
+	matches, err := filepath.Glob(l.path + ".*.archived")
+	if err != nil {
+		return
+	}
+
+	cutoff := time.Now().Add(-l.archiveMaxAge)
+	for _, m := range matches {
+		info, err := os.Stat(m)
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			os.Remove(m) //nolint:errcheck
+		}
 	}
 }
 
@@ -154,7 +221,35 @@ func main() {
 
 	// Enable basic logging for dashboard visibility
 	basicLogger := &BasicFileLogger{path: "audit.log"}
+	if config.Global.RetentionEnabled {
+		basicLogger.SetRotation(
+			int64(config.Global.AuditLogMaxSizeMB)*1024*1024,
+			time.Duration(config.Global.AuditLogArchiveRetentionDays)*24*time.Hour,
+		)
+	}
 	eng.AuditLogger = basicLogger
+
+	// GDPR Art. 5(1)(e) storage limitation: periodically purge vault rows
+	// older than VaultRetentionDays. Never touches the Entity Registry.
+	if config.Global.RetentionEnabled {
+		retentionCtx, cancelRetention := context.WithCancel(context.Background())
+		defer cancelRetention()
+		go vault.RunRetentionLoop(
+			retentionCtx,
+			vaultProvider,
+			time.Duration(config.Global.RetentionSweepMinutes)*time.Minute,
+			time.Duration(config.Global.VaultRetentionDays)*24*time.Hour,
+			func(deleted int64, err error) {
+				if err != nil {
+					basicLogger.Log("system", "retention_sweep", "ERROR", err.Error())
+					return
+				}
+				if deleted > 0 {
+					basicLogger.Log("system", "retention_sweep", "OK", fmt.Sprintf("purged %d expired vault token(s)", deleted))
+				}
+			},
+		)
+	}
 
 	// SLM_ADAPTER selects the Tier 2 NER backend protocol:
 	//   "openai-chat"    → QwenScanner  (llama.cpp /v1/chat/completions)
@@ -1204,6 +1299,63 @@ func startServer(eng *refinery.Refinery, servePort string) {
 				eng.AuditLogger.Log("auditor", "revealed", t, "N/A")
 			} else {
 				results[t] = "ERR_NOT_FOUND"
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"results": results,
+		})
+	})
+
+	// /api/vault/delete supports on-demand data-subject erasure requests
+	// (GDPR Art. 17 "right to erasure"), scoped to single vault token rows —
+	// it deliberately does not cascade into the Entity Registry, matching
+	// /api/reveal's existing scope of operating on vault rows only.
+	http.HandleFunc("/api/vault/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		auditorToken := os.Getenv("OCU_AUDITOR_TOKEN")
+		if auditorToken == "" {
+			http.Error(w, "Unauthorized: OCU_AUDITOR_TOKEN is not configured on this server.", http.StatusForbidden)
+			return
+		}
+
+		authHeader := r.Header.Get("Authorization")
+		if authHeader != "Bearer "+auditorToken {
+			eng.AuditLogger.Log("UNKNOWN", "failed_vault_delete_auth", "N/A", "401 Unauthorized")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !revealLimiter.allow(authHeader) {
+			eng.AuditLogger.Log("auditor", "vault_delete_rate_limited", "N/A", "429 Too Many Requests")
+			http.Error(w, "Too many delete requests — slow down.", http.StatusTooManyRequests)
+			return
+		}
+
+		var payload struct {
+			Tokens []string `json:"tokens"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Invalid payload", http.StatusBadRequest)
+			return
+		}
+
+		results := make(map[string]string)
+		for _, t := range payload.Tokens {
+			deleted, err := eng.Vault.DeleteToken(t)
+			switch {
+			case err != nil:
+				results[t] = "ERR_FAILED"
+			case deleted:
+				results[t] = "DELETED"
+				eng.AuditLogger.Log("auditor", "erased", t, "N/A")
+			default:
+				results[t] = "NOT_FOUND"
 			}
 		}
 
