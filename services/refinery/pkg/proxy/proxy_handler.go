@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -58,7 +58,7 @@ func (h *Handler) logAudit(actor, action, resource, status, detail string) {
 		return
 	}
 	if err := h.auditor.Log(actor, action, resource, status, detail); err != nil {
-		log.Printf("[WARN] audit write failed: %v", err)
+		slog.Warn("audit write failed", "error", err)
 	}
 }
 
@@ -156,14 +156,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ── 2. Redact PII from JSON body ─────────────────────────────────────────
 	refStart := time.Now()
 	sanitisedBody, redacted, err := h.redactBody(rawBody, actor)
-	log.Printf("[DEBUG] Redaction complete. Redacted: %v, Body length: %d -> %d", redacted, len(rawBody), len(sanitisedBody)) //nolint:gosec // G706: body is already PII-masked by the refinery pipeline
+	slog.Debug("redaction complete", "redacted", redacted, "body_len_before", len(rawBody), "body_len_after", len(sanitisedBody)) //nolint:gosec // G706: body is already PII-masked by the refinery pipeline
 	if redacted {
-		log.Printf("[DEBUG] Sanitised Body (truncated): %s", string(sanitisedBody)) //nolint:gosec // G706: body is already PII-masked by the refinery pipeline
+		slog.Debug("sanitised body", "body", string(sanitisedBody)) //nolint:gosec // G706: body is already PII-masked by the refinery pipeline
 	}
 	RequestLatency.WithLabelValues("refinery_total").Observe(time.Since(refStart).Seconds())
 
 	if err != nil {
-		log.Printf("[PROXY-BLOCK] Refinery error: %v", err)
+		slog.Warn("proxy redaction blocked request", "error", err)
 		RequestsTotal.WithLabelValues(r.Method, "error", "false").Inc()
 		if strings.Contains(err.Error(), "trial limit reached") {
 			FailClosedTotal.WithLabelValues("trial_limit").Inc()
@@ -200,7 +200,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ── 4. Forward to upstream ───────────────────────────────────────────────
 	resp, err := h.transport.RoundTrip(upstreamReq)
 	if err != nil {
-		log.Printf("[PROXY] upstream error: %v", err)
+		slog.Error("proxy upstream error", "error", err)
 		h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", "upstream error")
 		http.Error(w, fmt.Sprintf("ocultar-proxy: upstream error: %v", err), http.StatusBadGateway)
 		return
@@ -224,7 +224,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	RequestLatency.WithLabelValues("rehydration").Observe(time.Since(rehyStart).Seconds())
 
 	if degraded {
-		log.Printf("[PROXY] re-hydration failed: %v", err)
+		slog.Error("proxy re-hydration failed", "error", err)
 		h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", "re-hydration error")
 	}
 	if err != nil {

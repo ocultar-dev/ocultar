@@ -5,7 +5,7 @@
 package proxy
 
 import (
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 )
@@ -32,7 +32,8 @@ func LoadConfig() Config {
 
 	target := os.Getenv("OCU_PROXY_TARGET")
 	if target == "" {
-		log.Fatal("[FATAL] OCU_PROXY_TARGET is not set. Set it to the upstream API URL (e.g. https://api.openai.com)")
+		slog.Error("OCU_PROXY_TARGET is not set; set it to the upstream API URL (e.g. https://api.openai.com)")
+		os.Exit(1)
 	}
 	// Strip trailing slash for clean URL construction.
 	target = strings.TrimRight(target, "/")

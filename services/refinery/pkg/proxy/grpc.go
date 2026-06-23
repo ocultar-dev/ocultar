@@ -3,7 +3,7 @@ package proxy
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 
 	"google.golang.org/grpc"
@@ -43,9 +43,9 @@ func (s *GrpcServer) Start() error {
 	)
 
 	go func() {
-		log.Printf("[GRPC] Listening on %s for SIEM traffic", s.listenAddr)
+		slog.Info("grpc listening for SIEM traffic", "addr", s.listenAddr)
 		if err := s.server.Serve(lis); err != nil {
-			log.Printf("[GRPC] Server error: %v", err)
+			slog.Error("grpc server error", "error", err)
 		}
 	}()
 
@@ -63,7 +63,7 @@ func (s *GrpcServer) Stop() {
 func (s *GrpcServer) unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	sanitizedReq, err := s.eng.ProcessInterface(req, "grpc_proxy")
 	if err != nil {
-		log.Printf("[GRPC-BLOCK] Intercept error on %s: %v", info.FullMethod, err)
+		slog.Warn("grpc intercept error, fail-closed", "method", info.FullMethod, "error", err)
 		return nil, fmt.Errorf("fail-closed security block on gRPC stream")
 	}
 	return handler(ctx, sanitizedReq)

@@ -2,7 +2,7 @@ package proxy
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"strings"
 
@@ -58,7 +58,7 @@ func (s *SyslogServer) listen(upstream *net.UDPAddr) {
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				return
 			}
-			log.Printf("[SYSLOG] read error: %v", err)
+			slog.Error("syslog read error", "error", err)
 			continue
 		}
 
@@ -66,7 +66,7 @@ func (s *SyslogServer) listen(upstream *net.UDPAddr) {
 		// Send through refinery for redaction
 		refined, err := s.eng.RefineString(msg, "syslog_proxy", nil)
 		if err != nil {
-			log.Printf("[SYSLOG-BLOCK] Refinery error: %v (dropping message)", err)
+			slog.Warn("syslog refinery error, dropping message (fail-closed)", "error", err)
 			continue // Fail-closed: drop on error
 		}
 
@@ -75,15 +75,15 @@ func (s *SyslogServer) listen(upstream *net.UDPAddr) {
 			upstreamConn, err := net.DialUDP("udp", nil, upstream)
 			if err == nil {
 				if _, err := upstreamConn.Write([]byte(refined)); err != nil {
-					log.Printf("[SYSLOG] Failed to send to SIEM: %v", err)
+					slog.Error("syslog failed to send to SIEM", "error", err)
 				}
 				upstreamConn.Close() //nolint:errcheck
 			} else {
-				log.Printf("[SYSLOG] Failed to dial upstream: %v", err)
+				slog.Error("syslog failed to dial upstream", "error", err)
 			}
 		} else {
 			// Log locally if no upstream SIEM is configured
-			log.Printf("[SYSLOG-REDACTED] %s", refined)
+			slog.Info("syslog message (redacted)", "message", refined)
 		}
 	}
 }

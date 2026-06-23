@@ -7,10 +7,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ocultar-dev/ocultar/pkg/audit"
@@ -33,6 +34,29 @@ func init() {
 	flag.BoolVar(&devMode, "dev", false, "Enable development mode (allows insecure defaults)")
 }
 
+// initLogging configures slog's default logger as structured JSON, with the
+// level controlled by OCU_LOG_LEVEL (debug|info|warn|error, default info).
+func initLogging() {
+	level := new(slog.LevelVar)
+	level.Set(slog.LevelInfo)
+	switch strings.ToLower(os.Getenv("OCU_LOG_LEVEL")) {
+	case "debug":
+		level.Set(slog.LevelDebug)
+	case "warn":
+		level.Set(slog.LevelWarn)
+	case "error":
+		level.Set(slog.LevelError)
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+}
+
+// fatalf logs an error at Error level and exits — slog has no built-in
+// fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
+func fatalf(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
+}
+
 // auditAdapter bridges audit.ImmutableLogger to the refinery.AuditLogger interface.
 type auditAdapter struct {
 	logger *audit.ImmutableLogger
@@ -42,7 +66,7 @@ func (a *auditAdapter) Init(_ string) error { return nil }
 func (a *auditAdapter) Close()              { a.logger.Close() }
 func (a *auditAdapter) Log(actor, action, resource, mapping string) {
 	if err := a.logger.Log(actor, action, resource, "ALLOW", mapping); err != nil {
-		log.Printf("[WARN] audit write failed: %v", err)
+		slog.Warn("audit write failed", "error", err)
 	}
 }
 
@@ -50,9 +74,9 @@ func getSalt() string {
 	s := os.Getenv("OCU_SALT")
 	if s == "" {
 		if !devMode {
-			log.Fatalf("[FATAL] OCU_SALT is missing. Production environments MUST define a unique OCU_SALT.")
+			fatalf("OCU_SALT is missing; production environments must define a unique OCU_SALT")
 		}
-		log.Printf("[WARN] OCU_SALT is not set — using built-in default salt. (Allowed ONLY in --dev mode)")
+		slog.Warn("OCU_SALT not set, using built-in default salt (allowed only in --dev mode)")
 		return defaultSalt
 	}
 	return s
@@ -62,9 +86,9 @@ func getMasterKey() []byte {
 	keyMaterial := os.Getenv("OCU_MASTER_KEY")
 	if keyMaterial == "" {
 		if !devMode {
-			log.Fatalf("[FATAL] OCU_MASTER_KEY is missing. Production environments MUST define a high-entropy master key.")
+			fatalf("OCU_MASTER_KEY is missing; production environments must define a high-entropy master key")
 		}
-		log.Printf("[WARN] OCU_MASTER_KEY is not set — using insecure dev key. (Allowed ONLY in --dev mode)")
+		slog.Warn("OCU_MASTER_KEY not set, using insecure dev key (allowed only in --dev mode)")
 		keyMaterial = "default-dev-key-32-chars-long-!!!"
 	}
 
@@ -73,14 +97,15 @@ func getMasterKey() []byte {
 	r := hkdf.New(sha256.New, []byte(keyMaterial), salt, info)
 	derived := make([]byte, 32)
 	if _, err := io.ReadFull(r, derived); err != nil {
-		log.Fatalf("[FATAL] HKDF key derivation failed: %v", err)
+		fatalf("HKDF key derivation failed", "error", err)
 	}
 	return derived
 }
 
 func main() {
 	flag.Parse()
-	log.Printf("OCULTAR Privacy Proxy v%s starting (DevMode: %v)…", VERSION, devMode)
+	initLogging()
+	slog.Info("OCULTAR Privacy Proxy starting", "version", VERSION, "dev_mode", devMode)
 
 	cfg := proxy.LoadConfig()
 	masterKey := getMasterKey()
@@ -88,13 +113,13 @@ func main() {
 
 	vaultProvider, err := vault.New(config.Global, cfg.VaultPath)
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to open vault: %v", err)
+		fatalf("failed to open vault", "error", err)
 	}
 	defer vaultProvider.Close()
 
 	eng, err := refinery.NewRefinery(vaultProvider, masterKey)
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to initialize refinery: %v", err)
+		fatalf("failed to initialize refinery", "error", err)
 	}
 	eng.Serve = "proxy"
 
@@ -104,7 +129,7 @@ func main() {
 	if keyHex := os.Getenv("OCU_AUDIT_PRIVATE_KEY"); keyHex != "" {
 		privKey, err := audit.LoadPrivateKeyFromHex(keyHex)
 		if err != nil {
-			log.Fatalf("[FATAL] %v", err)
+			fatalf(err.Error())
 		}
 		logPath := os.Getenv("OCU_AUDIT_LOG_PATH")
 		if logPath == "" {
@@ -112,7 +137,7 @@ func main() {
 		}
 		immutableLog, err = audit.NewImmutableLoggerWithKey(logPath, privKey)
 		if err != nil {
-			log.Fatalf("[FATAL] Failed to open audit log at %s: %v", logPath, err)
+			fatalf("failed to open audit log", "path", logPath, "error", err)
 		}
 		defer immutableLog.Close()
 		if config.Global.RetentionEnabled {
@@ -123,7 +148,7 @@ func main() {
 		}
 		eng.SetAuditLogger(&auditAdapter{logger: immutableLog})
 		auditActive = true
-		log.Printf("[INFO] Immutable audit log active: %s (public key: %s)", logPath, immutableLog.PublicKeyHex())
+		slog.Info("immutable audit log active", "path", logPath, "public_key", immutableLog.PublicKeyHex())
 	} else {
 		eng.SetAuditLogger(&refinery.NoopAuditLogger{})
 	}
@@ -155,14 +180,14 @@ func main() {
 	sidecarURL := config.Global.SLMSidecarURL
 	scanner, err := inference.NewRemoteScanner(sidecarURL)
 	if err != nil {
-		log.Fatalf("[FATAL] %v", err)
+		fatalf(err.Error())
 	}
 	eng.SetAIScanner(scanner)
-	log.Printf("[INFO] Tier 2 AI (Remote Sidecar) configured at %s", sidecarURL)
+	slog.Info("Tier 2 AI (remote sidecar) configured", "sidecar_url", sidecarURL)
 
 	handler, err := proxy.NewHandler(eng, vaultProvider, masterKey, cfg.TargetURL)
 	if err != nil {
-		log.Fatalf("[FATAL] %v", err)
+		fatalf(err.Error())
 	}
 	if immutableLog != nil {
 		handler.SetAuditLogger(immutableLog)
@@ -194,5 +219,7 @@ func main() {
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", handler)
 
-	log.Fatal(http.ListenAndServe(addr, mux))
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		fatalf("server exited", "error", err)
+	}
 }
