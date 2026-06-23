@@ -475,36 +475,7 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 	}
 
 	// TIER 0.5: Entity Registry Pre-Pass
-	// Replace all registered entity variants by direct string matching before any
-	// NER tier runs. This guarantees known identities are masked even when the NER
-	// model misses them (e.g. non-English names in French/Spanish documents).
-	if e.Vault != nil {
-		if entities, listErr := e.Vault.ListEntities(); listErr == nil && len(entities) > 0 {
-			for _, ent := range entities {
-				canonicalToken := fmt.Sprintf("[%s]", ent.ID) // e.g. "[PERSON_1]"
-				toMatch := append([]string{ent.CanonicalName}, ent.Variants...)
-				for _, name := range toMatch {
-					name = strings.TrimSpace(name)
-					if len(name) < 2 {
-						continue
-					}
-					// Fast path: skip regex if the text doesn't contain the string at all
-					if !strings.Contains(strings.ToLower(refined), strings.ToLower(name)) {
-						continue
-					}
-					// Word-boundary, case-insensitive replacement
-					re, reErr := regexp.Compile(`(?i)\b` + regexp.QuoteMeta(name) + `\b`)
-					if reErr != nil {
-						continue
-					}
-					refined = re.ReplaceAllStringFunc(refined, func(m string) string {
-						// Don't replace inside an already-existing token
-						return canonicalToken
-					})
-				}
-			}
-		}
-	}
+	refined = tier05EntityRegistry(e, refined)
 
 	// TIER 1: Centralized Deterministic Pipeline
 	eng := pii.NewRefinery()
