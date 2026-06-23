@@ -9,7 +9,7 @@ package vault
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -76,7 +76,7 @@ func (p *duckdbProvider) RegisterEntity(entityType, canonicalName string, varian
 		return "", mergeErr
 	}
 
-	log.Printf("[entity-registry] Registered %s → [%s] with %d variant(s)", canonicalName, actualID, len(variants))
+	slog.Info("entity registry: registered canonical entity", "entity_type", entityType, "id", actualID, "variants", len(variants))
 	return fmt.Sprintf("[%s]", actualID), nil
 }
 
@@ -306,7 +306,7 @@ func (p *postgresProvider) RegisterEntity(entityType, canonicalName string, vari
 		return "", mergeErr
 	}
 
-	log.Printf("[entity-registry] Registered %s → [%s] with %d variant(s)", canonicalName, actualID, len(variants))
+	slog.Info("entity registry: registered canonical entity", "entity_type", entityType, "id", actualID, "variants", len(variants))
 	return fmt.Sprintf("[%s]", actualID), nil
 }
 

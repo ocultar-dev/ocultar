@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -112,7 +112,7 @@ func newPostgresProvider(dsn string) (*postgresProvider, error) {
 	}
 
 	p := &postgresProvider{db: db}
-	log.Printf("[vault/postgres] Connected to centralized vault.")
+	slog.Info("vault/postgres connected to centralized vault")
 	return p, nil
 }
 
@@ -141,7 +141,7 @@ func (p *postgresProvider) StoreToken(hash, token, encryptedPII string) (bool, e
 		hash, token, encryptedPII,
 	)
 	if err != nil {
-		log.Printf("[vault/postgres] StoreToken error: %v", err)
+		slog.Error("vault/postgres StoreToken error", "error", err)
 		return false, err
 	}
 	rows, _ := result.RowsAffected()

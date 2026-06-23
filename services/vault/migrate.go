@@ -3,7 +3,7 @@ package vault
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/ocultar-dev/ocultar/pkg/config"
@@ -31,7 +31,7 @@ func MigrateDuckDBtoPostgres(duckdbProv Provider, pgDSN string) error {
 	}
 	defer rows.Close()
 
-	log.Printf("[migration] Starting bulk transfer to PostgreSQL...")
+	slog.Info("migration: starting bulk transfer to PostgreSQL")
 	var count int
 	for rows.Next() {
 		var hash, token, encrypted string
@@ -49,7 +49,7 @@ func MigrateDuckDBtoPostgres(duckdbProv Provider, pgDSN string) error {
 		return fmt.Errorf("row iteration error: %w", err)
 	}
 
-	log.Printf("[migration] Successfully transferred %d tokens.", count)
+	slog.Info("migration: successfully transferred tokens", "count", count)
 
 	config.Global.VaultBackend = "postgres"
 	config.Global.PostgresDSN = pgDSN

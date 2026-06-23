@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -128,7 +128,7 @@ func (p *duckdbProvider) StoreToken(hash, token, encryptedPII string) (bool, err
 		hash, token, encryptedPII,
 	)
 	if err != nil {
-		log.Printf("[vault/duckdb] StoreToken error: %v", err)
+		slog.Error("vault/duckdb StoreToken error", "error", err)
 		return false, err
 	}
 	rows, _ := result.RowsAffected()
