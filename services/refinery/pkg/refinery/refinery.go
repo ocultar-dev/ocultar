@@ -76,8 +76,6 @@ func isBlockedSLMLabel(item string) bool {
 	}
 	return false
 }
-var greetingRegex = regexp.MustCompile(`(?m)(?i)(?:Regards|Best|Cheers|Bonjour|Hello|Hi|Dear|Sincerely|Cordialement)[,.-]*\s+([A-ZÀ-Ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ]+){0,2})\b`)
-
 // Boundary artifact cleanup: absorb short (1-3 char) orphaned fragments adjacent to tokens
 // left behind by SLM sub-word tokenization.
 var trailingArtifact = regexp.MustCompile(`(\[[A-Za-z_]+_[0-9a-f]+\])([^\s\[\]"'{}\(\),.:;]{1,3})(?:[\s\[\]"'{}\(\),.:;]|$)`)
@@ -89,13 +87,6 @@ var profTitleRegex = regexp.MustCompile(`(?i)\b(DR|DOCTEUR|PROF|MME|MLLE|SR|SRA|
 var capitalizedWordRegex = regexp.MustCompile(`\b[A-ZÀ-Ÿ][A-ZÀ-Ÿa-zà-ÿ\-]{1,20}\b`)
 var possessiveRegex = regexp.MustCompile(`(?i)\b[A-ZÀ-Ÿ][a-zà-ÿ\-]{1,20}['’]s\b`)
 var semanticTriggerRegex = regexp.MustCompile(`(?i)\b(DIVORCE|MARIAGE|WEDDING|AVOCAT|LAWYER|HOSPITAL|CLINIQUE|TREATMENT|TRAITEMENT|CAMPAIGN|POLITICAL|CAMPAGNE|PEA)\b`)
-var nameIntroRegex = regexp.MustCompile(`(?m)(?i)\b(?:my name is|i am|call me|this is)\s+([A-ZÀ-Ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ]+){0,2})\b`)
-
-// nameInSentenceRegex catches proper names (two+ capitalised words) referenced by
-// interrogative or inquiry verbs: "where does John Galt live", "who is Jane Smith",
-// "tell me about Bob Jones", "contact Sarah Lee". This extends Tier 1.5 name
-// detection beyond self-disclosures to cover third-party name mentions in questions.
-var nameInSentenceRegex = regexp.MustCompile(`(?i)\b(?:where(?:\s+does)?|who(?:\s+is)?|about|contact|find|email|call|meet)\s+([A-ZÀ-Ÿ][a-zà-ÿ\-]{1,20}(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ\-]{1,20}){1,3})\b`)
 
 
 // DryRunReport collects PII hit metadata when running in --dry-run or --report mode.
@@ -496,24 +487,9 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 	}
 
 	// TIER 1.5: Greeting & Signature Shield
-	// Catches names disclosed via salutations ("Regards, John") and self-introductions ("My name is Jane").
-	// Runs after phone/address parsing to avoid false-positive collisions with numeric fields.
-	greetingMatches := greetingRegex.FindAllStringSubmatchIndex(refined, -1)
-	nameIntroMatches := nameIntroRegex.FindAllStringSubmatchIndex(refined, -1)
-	nameSentenceMatches := nameInSentenceRegex.FindAllStringSubmatchIndex(refined, -1)
-	allNameMatches := append(append(greetingMatches, nameIntroMatches...), nameSentenceMatches...)
-
-	for _, match := range allNameMatches {
-		if len(match) > 2 {
-			start, end := match[2], match[3]
-			nameStr := refined[start:end]
-			if !strings.HasPrefix(nameStr, "[") {
-				refined, err = e.applyReplacement(refined, nameStr, "PERSON", "greeting", actor)
-				if err != nil {
-					return "", err
-				}
-			}
-		}
+	refined, err = tier15GreetingShield(e, refined, actor)
+	if err != nil {
+		return "", err
 	}
 
 	// TIER 2: SLM NER Scan (Mandatory Phase)
