@@ -77,7 +77,6 @@ func isBlockedSLMLabel(item string) bool {
 	return false
 }
 var greetingRegex = regexp.MustCompile(`(?m)(?i)(?:Regards|Best|Cheers|Bonjour|Hello|Hi|Dear|Sincerely|Cordialement)[,.-]*\s+([A-ZÀ-Ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ]+){0,2})\b`)
-var base64Regex = regexp.MustCompile(`([A-Za-z0-9+/=]{20,})`) // Lowered from 40: catches short PII (emails, names, phones) encoded in Base64
 
 // Boundary artifact cleanup: absorb short (1-3 char) orphaned fragments adjacent to tokens
 // left behind by SLM sub-word tokenization.
@@ -467,40 +466,7 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 	var err error
 
 	// TIER 0.1: Embedded Base64 Evasion Shield
-	base64Matches := base64Regex.FindAllStringIndex(refined, -1)
-	if len(base64Matches) > 0 {
-		var out strings.Builder
-		lastPos := 0
-		for _, match := range base64Matches {
-			start, end := match[0], match[1]
-			out.WriteString(refined[lastPos:start])
-
-			b64Str := refined[start:end]
-			if decodedBytes, err := decodeBase64(b64Str); err == nil && len(decodedBytes) > 0 {
-				mod, procErr := e.processInterfaceRecursive(string(decodedBytes), actor, preScanMap)
-				if procErr == nil {
-					if modStr, ok := mod.(string); ok {
-						out.WriteString(base64.StdEncoding.EncodeToString([]byte(modStr)))
-					} else if modBytes, err := json.Marshal(mod); err == nil {
-						if len(modBytes) >= 2 && modBytes[0] == '"' && modBytes[len(modBytes)-1] == '"' {
-							out.WriteString(base64.StdEncoding.EncodeToString(modBytes[1 : len(modBytes)-1]))
-						} else {
-							out.WriteString(base64.StdEncoding.EncodeToString(modBytes))
-						}
-					} else {
-						out.WriteString(b64Str)
-					}
-				} else {
-					out.WriteString(b64Str)
-				}
-			} else {
-				out.WriteString(b64Str)
-			}
-			lastPos = end
-		}
-		out.WriteString(refined[lastPos:])
-		refined = out.String()
-	}
+	refined = tier01Base64Shield(e, refined, actor, preScanMap)
 
 	// Pre-compute structural PII spans (emails, URLs) to protect them from Tier 0 dictionary
 	// fragmentation. Without this guard, a dictionary term like "trejos" replaces the name
