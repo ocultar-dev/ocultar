@@ -484,27 +484,15 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 	}
 
 	// TIER 1.1 (FALLBACK): Phone detection runs AFTER the PII registry scan.
-	// This ensures that digit sequences already claimed by national IDs/SSNs
-	// are not misidentified as phone numbers.
-	if strings.ContainsAny(refined, "0123456789") && !e.isFullyTokenised(refined) {
-		var phoneErr error
-		refined, phoneErr = parseAndReplaceWithErr(refined, ParseAndReplacePhonesRaw, func(match string, start, end int) (string, error) {
-			log.Printf("[DEBUG] Tier 1.1 Phone hit: %s", match)
-			return e.getOrSetSecureTokenLoc(match, "PHONE", "phone", start, end, actor)
-		})
-		if phoneErr != nil {
-			return "", phoneErr
-		}
+	refined, err = tier11PhoneShield(e, refined, actor)
+	if err != nil {
+		return "", err
 	}
 
-
-	if len(refined) > 10 && (strings.ContainsAny(refined, "0123456789") || containsAnyLower(refined, "rue", "calle", "street", "ave", "road", "str.")) {
-		refined, err = parseAndReplaceWithErr(refined, ParseAndReplaceAddressesRaw, func(match string, start, end int) (string, error) {
-			return e.getOrSetSecureTokenLoc(match, "ADDRESS", "address", start, end, actor)
-		})
-		if err != nil {
-			return "", err
-		}
+	// TIER 1.2: Address Shield
+	refined, err = tier12AddressShield(e, refined, actor)
+	if err != nil {
+		return "", err
 	}
 
 	// TIER 1.5: Greeting & Signature Shield
