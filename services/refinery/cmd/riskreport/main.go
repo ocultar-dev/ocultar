@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	htmltmpl "html/template"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	texttmpl "text/template"
@@ -16,6 +16,29 @@ import (
 	"os/exec"
 	"runtime"
 )
+
+// initLogging configures slog's default logger as structured JSON, with the
+// level controlled by OCU_LOG_LEVEL (debug|info|warn|error, default info).
+func initLogging() {
+	level := new(slog.LevelVar)
+	level.Set(slog.LevelInfo)
+	switch strings.ToLower(os.Getenv("OCU_LOG_LEVEL")) {
+	case "debug":
+		level.Set(slog.LevelDebug)
+	case "warn":
+		level.Set(slog.LevelWarn)
+	case "error":
+		level.Set(slog.LevelError)
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+}
+
+// fatalf logs an error at Error level and exits — slog has no built-in
+// fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
+func fatalf(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
+}
 
 const reportVersion = "3.1"
 const engineVersion = "v1.14"
@@ -596,23 +619,24 @@ const htmlTemplate = `<!DOCTYPE html>
 `
 
 func main() {
+	initLogging()
 	datasetPath := flag.String("dataset", "", "Path to the JSON dataset file")
 	outputPath := flag.String("output", "risk_report.md", "Output path for the Markdown report")
 	htmlPath := flag.String("html", "", "If set, also generate an HTML report at this path")
 	flag.Parse()
 
 	if *datasetPath == "" {
-		log.Fatal("Usage: riskreport -dataset <path> [-output <path>] [-html <path>]")
+		fatalf("usage: riskreport -dataset <path> [-output <path>] [-html <path>]")
 	}
 
 	data, err := os.ReadFile(*datasetPath)
 	if err != nil {
-		log.Fatalf("Failed to read dataset: %v", err)
+		fatalf("failed to read dataset", "error", err)
 	}
 
 	var dataset []map[string]interface{}
 	if err := json.Unmarshal(data, &dataset); err != nil {
-		log.Fatalf("Failed to parse JSON: %v", err)
+		fatalf("failed to parse JSON", "error", err)
 	}
 
 	qi := []string{"region", "dept"}
@@ -628,11 +652,11 @@ func main() {
 	mdTmpl := texttmpl.Must(texttmpl.New("md").Parse(mdTemplate))
 	mdFile, err := os.Create(*outputPath)
 	if err != nil {
-		log.Fatalf("Failed to create markdown output: %v", err)
+		fatalf("failed to create markdown output", "error", err)
 	}
 	defer mdFile.Close() //nolint:errcheck
 	if err := mdTmpl.Execute(mdFile, report); err != nil {
-		log.Fatalf("Failed to render markdown: %v\nNote: ensure all template fields match the updated RiskReport struct.", err)
+		fatalf("failed to render markdown; ensure all template fields match the updated RiskReport struct", "error", err)
 	}
 	fmt.Printf("✅  Markdown report: %s\n", *outputPath)
 
@@ -645,11 +669,11 @@ func main() {
 		htmlTmpl := htmltmpl.Must(htmltmpl.New("html").Funcs(funcMap).Parse(htmlTemplate))
 		htmlFile, err := os.Create(*htmlPath)
 		if err != nil {
-			log.Fatalf("Failed to create HTML output: %v", err)
+			fatalf("failed to create HTML output", "error", err)
 		}
 		defer htmlFile.Close() //nolint:errcheck
 		if err := htmlTmpl.Execute(htmlFile, report); err != nil {
-			log.Fatalf("Failed to render HTML: %v", err)
+			fatalf("failed to render HTML", "error", err)
 		}
 		fmt.Printf("✅  HTML report: %s\n", *htmlPath)
 		
