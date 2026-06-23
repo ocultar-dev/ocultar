@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -37,8 +36,8 @@ var startTime = time.Now()
 
 // initLogging configures slog's default logger as structured JSON, with the
 // level controlled by OCU_LOG_LEVEL (debug|info|warn|error, default info).
-// This also redirects the standard log package's output (used throughout
-// this file and its dependencies) through the same JSON handler — see
+// This also redirects the standard log package's output (used by some
+// not-yet-migrated dependencies) through the same JSON handler — see
 // https://pkg.go.dev/log/slog#SetDefault.
 func initLogging() {
 	level := new(slog.LevelVar)
@@ -54,13 +53,19 @@ func initLogging() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 }
 
+// fatalf logs an error at Error level and exits — slog has no built-in
+// fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
+func fatalf(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
+}
 
 // getSalt retrieves the cryptographic salt from the environment or falls back to a default value.
 func getSalt() string {
 	if s := os.Getenv("OCU_SALT"); s != "" {
 		return s
 	}
-	log.Printf("[WARN] OCU_SALT is not set — using built-in default salt. Set OCU_SALT in production.")
+	slog.Warn("OCU_SALT is not set, using built-in default salt; set OCU_SALT in production")
 	return defaultSalt
 }
 
@@ -68,7 +73,7 @@ func getSalt() string {
 func getMasterKey() []byte {
 	keyMaterial := os.Getenv("OCU_MASTER_KEY")
 	if keyMaterial == "" {
-		log.Fatalf("[FATAL] OCU_MASTER_KEY is required but not set.")
+		fatalf("OCU_MASTER_KEY is required but not set")
 	}
 
 	salt := []byte(getSalt())
@@ -77,7 +82,7 @@ func getMasterKey() []byte {
 	r := hkdf.New(sha256.New, []byte(keyMaterial), salt, info)
 	derived := make([]byte, 32)
 	if _, err := io.ReadFull(r, derived); err != nil {
-		log.Fatalf("[FATAL] HKDF key derivation failed: %v", err)
+		fatalf("HKDF key derivation failed", "error", err)
 	}
 	return derived
 }
@@ -128,7 +133,7 @@ func (l *BasicFileLogger) Log(user, action, result, mapping string) {
 	}
 	bytes, _ := json.Marshal(entry)
 	if _, err := f.Write(append(bytes, '\n')); err != nil {
-		log.Printf("[AUDIT] failed to write audit entry: %v", err)
+		slog.Error("audit: failed to write entry", "error", err)
 	}
 }
 
@@ -147,7 +152,7 @@ func (l *BasicFileLogger) rotateIfNeeded() {
 
 	archivePath := fmt.Sprintf("%s.%s.archived", l.path, time.Now().UTC().Format("20060102T150405.000000000"))
 	if err := os.Rename(l.path, archivePath); err != nil {
-		log.Printf("[AUDIT] log rotation rename failed: %v", err)
+		slog.Error("audit: log rotation rename failed", "error", err)
 		return
 	}
 
@@ -202,7 +207,7 @@ func main() {
 		rep := reporter.New()
 		err := rep.GenerateHTMLReport(*complianceReport, *complianceOutput)
 		if err != nil {
-			log.Fatalf("Failed to generate compliance report: %v", err)
+			fatalf("failed to generate compliance report", "error", err)
 		}
 		fmt.Printf("Successfully generated compliance report at: %s\n", *complianceOutput)
 		os.Exit(0)
@@ -225,13 +230,13 @@ func main() {
 	// Open the vault using the provider selected by configuration.
 	vaultProvider, err := vault.New(config.Global, vaultPath)
 	if err != nil {
-		log.Fatal("Failed to open vault: ", err)
+		fatalf("failed to open vault", "error", err)
 	}
 	defer vaultProvider.Close() //nolint:errcheck
 
 	eng, err := refinery.NewRefinery(vaultProvider, masterKey)
 	if err != nil {
-		log.Fatal("Failed to initialize refinery: ", err)
+		fatalf("failed to initialize refinery", "error", err)
 	}
 	eng.DryRun = *dryRun
 	eng.Report = *report
@@ -276,7 +281,7 @@ func main() {
 	adapter := os.Getenv("SLM_ADAPTER")
 	if adapter == "" {
 		if legacy := os.Getenv("TIER2_ENGINE"); legacy != "" {
-			log.Printf("[DEPRECATED] TIER2_ENGINE renamed to SLM_ADAPTER. Please update your config.")
+			slog.Warn("[DEPRECATED] TIER2_ENGINE renamed to SLM_ADAPTER, please update your config")
 			switch legacy {
 			case "llama-cpp", "qwen":
 				adapter = "openai-chat"
@@ -292,17 +297,17 @@ func main() {
 	switch adapter {
 	case "openai-chat":
 		scanner = inference.NewQwenScanner(sidecarURL)
-		log.Printf("[INFO] Tier 2 AI active via openai-chat (Qwen/llama.cpp): %s", sidecarURL) //nolint:gosec // G706: sidecarURL is an operator-configured value, not user input
+		slog.Info("Tier 2 AI active via openai-chat (Qwen/llama.cpp)", "sidecar_url", sidecarURL)
 		eng.SetAIScanner(scanner)
 	case "none", "disabled":
-		log.Printf("[INFO] Tier 2 AI deactivated (NoopAIScanner active)")
+		slog.Info("Tier 2 AI deactivated (NoopAIScanner active)")
 	default:
 		remoteScanner, err := inference.NewRemoteScanner(sidecarURL)
 		if err != nil {
-			log.Fatalf("[FATAL] %v", err)
+			fatalf(err.Error())
 		}
 		scanner = remoteScanner
-		log.Printf("[INFO] Tier 2 AI active via privacy-filter sidecar: %s", sidecarURL) //nolint:gosec // G706: sidecarURL is an operator-configured value, not user input
+		slog.Info("Tier 2 AI active via privacy-filter sidecar", "sidecar_url", sidecarURL)
 		eng.SetAIScanner(scanner)
 	}
 
@@ -310,12 +315,12 @@ func main() {
 	for domain, sidecarURL := range config.Global.Tier2DomainSidecars {
 		ds, err := inference.NewRemoteScanner(sidecarURL)
 		if err != nil {
-			log.Fatalf("[FATAL] %v", err)
+			fatalf(err.Error())
 		}
 		eng.SetDomainScanner(domain, ds)
 	}
 	if len(config.Global.Tier2DomainSidecars) > 0 {
-		log.Printf("[INFO] Active domain: '%s'", config.Global.DomainSnapshot)
+		slog.Info("active domain", "domain", config.Global.DomainSnapshot)
 	}
 	eng.AIScanner.SetDomain(config.Global.DomainSnapshot)
 
@@ -323,7 +328,7 @@ func main() {
 		c := recon.NewCrawler(eng)
 		heatmap, err := c.CrawlLocalDirectory(*reconPath)
 		if err != nil {
-			log.Fatalf("[FATAL] Recon Crawler failed: %v", err)
+			fatalf("recon crawler failed", "error", err)
 		}
 		fmt.Println(heatmap.ToJSON())
 		os.Exit(0)
@@ -338,7 +343,7 @@ func main() {
 			"workspace_id": os.Getenv("SLACK_WORKSPACE_ID"),
 		}
 		if err := cm.LoadAndStart("slack-default", "slack", slackCfg); err != nil {
-			log.Printf("[ERROR] Failed to start Slack connector: %v", err)
+			slog.Error("failed to start Slack connector", "error", err)
 		}
 	}
 
@@ -351,7 +356,7 @@ func main() {
 			"site_id":       os.Getenv("MS_SHAREPOINT_SITE_ID"),
 		}
 		if err := cm.LoadAndStart("sharepoint-default", "sharepoint-graph", spCfg); err != nil {
-			log.Printf("[ERROR] Failed to start SharePoint connector: %v", err)
+			slog.Error("failed to start SharePoint connector", "error", err)
 		}
 	}
 
@@ -366,7 +371,7 @@ func main() {
 
 	inputData, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		log.Fatal("Failed to read input: ", err)
+		fatalf("failed to read input", "error", err)
 	}
 
 	if len(inputData) == 0 {
@@ -381,7 +386,7 @@ func main() {
 	if err := json.Unmarshal(inputData, &jsonRaw); err == nil {
 		refinedData, err := eng.ProcessInterface(jsonRaw, actor)
 		if err != nil {
-			log.Fatalf("Refinery failure: %v", err)
+			fatalf("refinery failure", "error", err)
 		}
 		if !*dryRun {
 			output, _ := json.MarshalIndent(refinedData, "", "    ")
@@ -395,7 +400,7 @@ func main() {
 			}
 			refined, err := eng.RefineString(line, actor, nil)
 			if err != nil {
-				log.Fatalf("Refinery failure: %v", err)
+				fatalf("refinery failure", "error", err)
 			}
 			if !*dryRun {
 				fmt.Println(refined)
@@ -432,5 +437,5 @@ func startServer(eng *refinery.Refinery, servePort string) {
 		IdleTimeout:       120 * time.Second,
 		// WriteTimeout is intentionally unset: LLM streaming responses are long-lived.
 	}
-	log.Fatal(srv.ListenAndServe())
+	fatalf("server failed", "error", srv.ListenAndServe())
 }
