@@ -88,15 +88,16 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// 1. Parse request.
-	if err := r.ParseMultipartForm(32 << 20); err != nil && err != http.ErrNotMultipart {
+	r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
+	if err := r.ParseMultipartForm(32 << 20); err != nil && err != http.ErrNotMultipart { //nolint:gosec // bounded by MaxBytesReader
 		http.Error(w, "failed to parse form", http.StatusBadRequest)
 		return
 	}
 
-	connName := r.FormValue("connector")
-	modelName := r.FormValue("model")
-	prompt := r.FormValue("prompt")
-	sourceID := r.FormValue("source_id")
+	connName := r.FormValue("connector") //nolint:gosec // bounded by MaxBytesReader
+	modelName := r.FormValue("model") //nolint:gosec // bounded by MaxBytesReader
+	prompt := r.FormValue("prompt") //nolint:gosec // bounded by MaxBytesReader
+	sourceID := r.FormValue("source_id") //nolint:gosec // bounded by MaxBytesReader
 
 	if connName == "" {
 		http.Error(w, "missing 'connector' parameter", http.StatusBadRequest)

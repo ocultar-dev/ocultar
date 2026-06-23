@@ -28,8 +28,11 @@ func enableDevMode(t *testing.T) {
 // setEnv sets environment variables for the test and unsets them after.
 func setEnv(t *testing.T, pairs ...string) {
 	t.Helper()
+	if len(pairs)%2 != 0 {
+		t.Fatalf("setEnv requires an even number of arguments")
+	}
 	for i := 0; i < len(pairs); i += 2 {
-		os.Setenv(pairs[i], pairs[i+1])
+		os.Setenv(pairs[i], pairs[i+1]) //nolint:gosec // index checked by len%2==0
 		k := pairs[i]
 		t.Cleanup(func() { os.Unsetenv(k) })
 	}

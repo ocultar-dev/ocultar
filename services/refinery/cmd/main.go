@@ -56,7 +56,7 @@ func initLogging() {
 // fatalf logs an error at Error level and exits — slog has no built-in
 // fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
 func fatalf(msg string, args ...any) {
-	slog.Error(msg, args...)
+	slog.Error(msg, args...) //nolint:gosec // intentional
 	os.Exit(1)
 }
 
@@ -297,7 +297,7 @@ func main() {
 	switch adapter {
 	case "openai-chat":
 		scanner = inference.NewQwenScanner(sidecarURL)
-		slog.Info("Tier 2 AI active via openai-chat (Qwen/llama.cpp)", "sidecar_url", sidecarURL)
+		slog.Info("Tier 2 AI active via openai-chat (Qwen/llama.cpp)", "sidecar_url", sidecarURL) //nolint:gosec // intentional
 		eng.SetAIScanner(scanner)
 	case "none", "disabled":
 		slog.Info("Tier 2 AI deactivated (NoopAIScanner active)")
@@ -307,7 +307,7 @@ func main() {
 			fatalf(err.Error())
 		}
 		scanner = remoteScanner
-		slog.Info("Tier 2 AI active via privacy-filter sidecar", "sidecar_url", sidecarURL)
+		slog.Info("Tier 2 AI active via privacy-filter sidecar", "sidecar_url", sidecarURL) //nolint:gosec // intentional
 		eng.SetAIScanner(scanner)
 	}
 

@@ -213,7 +213,7 @@ func (l *ImmutableLogger) purgeOldArchivesLocked() {
 			continue
 		}
 		if info.ModTime().Before(cutoff) {
-			os.Remove(m)
+			_ = os.Remove(m)
 		}
 	}
 }

@@ -181,7 +181,7 @@ func TestExtractActor_DevModeWhenSecretUnset(t *testing.T) {
 }
 
 func TestVerifySlackSignature_Valid(t *testing.T) {
-	secret := "slack-test-secret"
+	secret := "slack-test-secret" //nolint:gosec // test credential
 	body := []byte(`{"type":"event_callback"}`)
 	ts := fmt.Sprintf("%d", time.Now().Unix())
 
@@ -204,7 +204,7 @@ func TestVerifySlackSignature_WrongSecretRejected(t *testing.T) {
 }
 
 func TestVerifySlackSignature_TamperedBodyRejected(t *testing.T) {
-	secret := "slack-test-secret"
+	secret := "slack-test-secret" //nolint:gosec // test credential
 	ts := fmt.Sprintf("%d", time.Now().Unix())
 
 	sig := computeSlackSignature(secret, ts, []byte(`{"type":"event_callback"}`))
@@ -216,7 +216,7 @@ func TestVerifySlackSignature_TamperedBodyRejected(t *testing.T) {
 }
 
 func TestVerifySlackSignature_StaleTimestampRejected(t *testing.T) {
-	secret := "slack-test-secret"
+	secret := "slack-test-secret" //nolint:gosec // test credential
 	body := []byte(`{"type":"event_callback"}`)
 	staleTs := fmt.Sprintf("%d", time.Now().Add(-10*time.Minute).Unix())
 
@@ -228,7 +228,7 @@ func TestVerifySlackSignature_StaleTimestampRejected(t *testing.T) {
 }
 
 func TestVerifySlackSignature_FutureTimestampRejected(t *testing.T) {
-	secret := "slack-test-secret"
+	secret := "slack-test-secret" //nolint:gosec // test credential
 	body := []byte(`{"type":"event_callback"}`)
 	futureTs := fmt.Sprintf("%d", time.Now().Add(10*time.Minute).Unix())
 
@@ -240,7 +240,7 @@ func TestVerifySlackSignature_FutureTimestampRejected(t *testing.T) {
 }
 
 func TestVerifySlackSignature_MalformedTimestampRejected(t *testing.T) {
-	secret := "slack-test-secret"
+	secret := "slack-test-secret" //nolint:gosec // test credential
 	body := []byte(`{"type":"event_callback"}`)
 
 	if verifySlackSignature(secret, "not-a-unix-timestamp", "v0=anything", body) {

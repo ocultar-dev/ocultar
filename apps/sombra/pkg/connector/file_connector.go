@@ -238,7 +238,7 @@ func normaliseCSV(data []byte) (string, error) {
 	headers := records[0]
 	var sb strings.Builder
 	for i, row := range records[1:] {
-		sb.WriteString(fmt.Sprintf("--- Record %d ---\n", i+1))
+		fmt.Fprintf(&sb, "--- Record %d ---\n", i+1)
 		for j, cell := range row {
 			header := ""
 			if j < len(headers) {
@@ -246,7 +246,7 @@ func normaliseCSV(data []byte) (string, error) {
 			} else {
 				header = fmt.Sprintf("Column_%d", j)
 			}
-			sb.WriteString(fmt.Sprintf("%s: %s\n", header, cell))
+			fmt.Fprintf(&sb, "%s: %s\n", header, cell)
 		}
 		sb.WriteByte('\n')
 	}

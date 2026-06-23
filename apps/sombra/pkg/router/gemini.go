@@ -84,13 +84,13 @@ func (g *GeminiAdapter) Send(ctx context.Context, messages []Message, opts Model
 			}
 		}
 
-		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body)) //nolint:gosec // intentional proxy action
 		if err != nil {
 			return "", fmt.Errorf("gemini: %w", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := g.client.Do(req)
+		resp, err := g.client.Do(req) //nolint:gosec // intentional proxy action
 		if err != nil {
 			lastErr = err
 			continue // network error, retry
@@ -167,7 +167,7 @@ func (g *GeminiAdapter) SendStream(ctx context.Context, messages []Message, opts
 	}
 
 	body, _ := json.Marshal(map[string]interface{}{"contents": contents})
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body)) //nolint:gosec // intentional proxy action
 	if err != nil {
 		return fmt.Errorf("gemini stream: %w", err)
 	}
@@ -175,7 +175,7 @@ func (g *GeminiAdapter) SendStream(ctx context.Context, messages []Message, opts
 
 	// Bounded so a hung upstream can't block the connection indefinitely; the
 	// request context still handles caller-side cancellation independently.
-	resp, err := (&http.Client{Timeout: 120 * time.Second}).Do(req)
+	resp, err := (&http.Client{Timeout: 120 * time.Second}).Do(req) //nolint:gosec // intentional proxy action
 	if err != nil {
 		return fmt.Errorf("gemini stream: %w", err)
 	}

@@ -94,7 +94,7 @@ func (p *duckdbProvider) nextEntityIDDuckDB(ctx context.Context, entityType stri
 	if err != nil {
 		return 0, fmt.Errorf("[vault/duckdb] nextEntityID begin: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	res, err := tx.ExecContext(ctx,
 		`UPDATE entity_id_seq SET next_val = next_val + 1 WHERE entity_type = ?`, entityType)

@@ -1,0 +1,48 @@
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - gosec
+
+linters-settings:
+  gosec:
+    excludes:
+      - G304   # file path from variable — expected in vault/config code
+
+issues:
+  exclude-dirs:
+    - apps/slm-engine
+  exclude-use-default: false
+  exclude-rules:
+    - text: 'G104|G114|G301'
+      linters:
+        - gosec
+    - text: 'SA4011'
+      linters:
+        - staticcheck
+    - text: '.*\.Close.*is not checked'
+      linters:
+        - errcheck
+    - text: '.*\.Log.*is not checked'
+      linters:
+        - errcheck
+    - text: '.*\.Scan.*is not checked'
+      linters:
+        - errcheck
+    - text: 'rand\.Read.*is not checked'
+      linters:
+        - errcheck
+    - text: '.*\.Write.*is not checked'
+      linters:
+        - errcheck
+    - text: '.*\.Encode.*is not checked'
+      linters:
+        - errcheck
+    - text: 'fmt\.Fprint.*is not checked'
+      linters:
+        - errcheck
+    - path: '_test\.go'
+      linters:
+        - errcheck

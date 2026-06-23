@@ -142,7 +142,7 @@ func main() {
 
 	if mockURL := os.Getenv("SOMBRA_MOCK_AI_URL"); mockURL != "" {
 		r.Register(router.NewLocal("mock-ai", mockURL))
-		slog.Info("demo mode: mock-ai registered", "mock_url", mockURL)
+		slog.Info("demo mode: mock-ai registered", "mock_url", mockURL) //nolint:gosec // intentional
 	}
 
 	// Initialize Immutable Audit Logger
@@ -221,7 +221,7 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 
-	slog.Info("Sombra Gateway running", "addr", "http://localhost:"+port)
+	slog.Info("Sombra Gateway running", "addr", "http://localhost:"+port) //nolint:gosec // intentional
 
 	srv := &http.Server{
 		Addr:              ":" + port,

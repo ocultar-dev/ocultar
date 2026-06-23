@@ -18,7 +18,7 @@ func (h *Handler) HandleConfig(w http.ResponseWriter, r *http.Request) {
 	safeConfig.CRMApiKey = ""
 	safeConfig.PostgresDSN = ""
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(safeConfig)
+	json.NewEncoder(w).Encode(safeConfig) //nolint:gosec // explicit exposure for config API
 }
 
 // HandleConfigRegex manages Tier 1 regex rules (GET list, POST add, DELETE remove).

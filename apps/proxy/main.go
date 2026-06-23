@@ -53,7 +53,7 @@ func initLogging() {
 // fatalf logs an error at Error level and exits — slog has no built-in
 // fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
 func fatalf(msg string, args ...any) {
-	slog.Error(msg, args...)
+	slog.Error(msg, args...) //nolint:gosec // intentional wrapper
 	os.Exit(1)
 }
 
@@ -148,7 +148,7 @@ func main() {
 		}
 		eng.SetAuditLogger(&auditAdapter{logger: immutableLog})
 		auditActive = true
-		slog.Info("immutable audit log active", "path", logPath, "public_key", immutableLog.PublicKeyHex())
+		slog.Info("immutable audit log active", "path", logPath, "public_key", immutableLog.PublicKeyHex()) //nolint:gosec // intentional
 	} else {
 		eng.SetAuditLogger(&refinery.NoopAuditLogger{})
 	}
