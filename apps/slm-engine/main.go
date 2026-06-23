@@ -4,13 +4,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/ocultar-dev/ocultar/apps/slm-engine/pkg/inference"
 )
 
 var scanner inference.Tier2Engine
+
+// initLogging configures slog's default logger as structured JSON, with the
+// level controlled by OCU_LOG_LEVEL (debug|info|warn|error, default info).
+// This also redirects the standard log package's output through the same
+// JSON handler — see https://pkg.go.dev/log/slog#SetDefault.
+func initLogging() {
+	level := new(slog.LevelVar)
+	level.Set(slog.LevelInfo)
+	switch strings.ToLower(os.Getenv("OCU_LOG_LEVEL")) {
+	case "debug":
+		level.Set(slog.LevelDebug)
+	case "warn":
+		level.Set(slog.LevelWarn)
+	case "error":
+		level.Set(slog.LevelError)
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+}
 
 func handleScan(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -45,6 +65,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	initLogging()
 	var err error
 
 	// SLM_ADAPTER selects the NER backend protocol (TIER2_ENGINE is a deprecated alias).

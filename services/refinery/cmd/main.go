@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"mime"
 	"net/http"
 	"os"
@@ -33,6 +34,25 @@ const VERSION = "1.14"
 
 const defaultSalt = "ocultar-v112-kdf-salt-fixed-16"
 var startTime = time.Now()
+
+// initLogging configures slog's default logger as structured JSON, with the
+// level controlled by OCU_LOG_LEVEL (debug|info|warn|error, default info).
+// This also redirects the standard log package's output (used throughout
+// this file and its dependencies) through the same JSON handler — see
+// https://pkg.go.dev/log/slog#SetDefault.
+func initLogging() {
+	level := new(slog.LevelVar)
+	level.Set(slog.LevelInfo)
+	switch strings.ToLower(os.Getenv("OCU_LOG_LEVEL")) {
+	case "debug":
+		level.Set(slog.LevelDebug)
+	case "warn":
+		level.Set(slog.LevelWarn)
+	case "error":
+		level.Set(slog.LevelError)
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+}
 
 
 // getSalt retrieves the cryptographic salt from the environment or falls back to a default value.
@@ -161,6 +181,7 @@ func (l *BasicFileLogger) purgeOldArchives() {
 func (l *BasicFileLogger) Close() {}
 
 func main() {
+	initLogging()
 	mime.AddExtensionType(".js", "application/javascript") //nolint:errcheck
 	showVersion := flag.Bool("version", false, "Print the OCULTAR refinery version and exit")
 	showVersionShort := flag.Bool("v", false, "Print the OCULTAR refinery version and exit (alias)")

@@ -5,9 +5,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/connector"
@@ -24,6 +25,29 @@ import (
 
 const defaultSalt = "ocultar-v112-kdf-salt-fixed-16"
 
+// initLogging configures slog's default logger as structured JSON, with the
+// level controlled by OCU_LOG_LEVEL (debug|info|warn|error, default info).
+func initLogging() {
+	level := new(slog.LevelVar)
+	level.Set(slog.LevelInfo)
+	switch strings.ToLower(os.Getenv("OCU_LOG_LEVEL")) {
+	case "debug":
+		level.Set(slog.LevelDebug)
+	case "warn":
+		level.Set(slog.LevelWarn)
+	case "error":
+		level.Set(slog.LevelError)
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+}
+
+// fatalf logs an error at Error level and exits — slog has no built-in
+// fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
+func fatalf(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
+}
+
 func getSalt() string {
 	if s := os.Getenv("OCU_SALT"); s != "" {
 		return s
@@ -34,7 +58,7 @@ func getSalt() string {
 func getMasterKey() []byte {
 	keyMaterial := os.Getenv("OCU_MASTER_KEY")
 	if keyMaterial == "" {
-		log.Printf("[WARN] OCU_MASTER_KEY is not set — using insecure dev key.")
+		slog.Warn("OCU_MASTER_KEY not set, using insecure dev key")
 		keyMaterial = "default-dev-key-32-chars-long-!!!"
 	}
 
@@ -44,19 +68,20 @@ func getMasterKey() []byte {
 	r := hkdf.New(sha256.New, []byte(keyMaterial), salt, info)
 	derived := make([]byte, 32)
 	if _, err := io.ReadFull(r, derived); err != nil {
-		log.Fatalf("[FATAL] HKDF key derivation failed: %v", err)
+		fatalf("HKDF key derivation failed", "error", err)
 	}
 	return derived
 }
 
 func main() {
+	initLogging()
 	fmt.Println("Booting Ocultar Sombra Gateway...")
 
 	config.InitDefaults()
 	config.Load()
 
 	if config.Global.JWTSecret == "" {
-		log.Printf("[WARN] OCU_JWT_SECRET is not set — Sombra is running in insecure dev mode. Any Bearer value is accepted as actor identity. Set OCU_JWT_SECRET in production.")
+		slog.Warn("OCU_JWT_SECRET not set — Sombra running in insecure dev mode (any Bearer value accepted as actor identity)")
 	}
 
 	masterKey := getMasterKey()
@@ -68,13 +93,13 @@ func main() {
 
 	v, err := vault.New(config.Settings{VaultBackend: "duckdb"}, vaultPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize vault: %v", err)
+		fatalf("failed to initialize vault", "error", err)
 	}
 	defer v.Close()
 
 	eng, err := refinery.NewRefinery(v, masterKey)
 	if err != nil {
-		log.Fatalf("Failed to initialize refinery: %v", err)
+		fatalf("failed to initialize refinery", "error", err)
 	}
 
 	// Fail-closed by default: if the SLM sidecar is unreachable, block the request
@@ -82,7 +107,7 @@ func main() {
 	// names/addresses). Operators who knowingly want availability over completeness
 	// can opt out explicitly.
 	if os.Getenv("OCU_SOMBRA_ALLOW_DEGRADED_NER") == "true" {
-		log.Printf("[WARN] OCU_SOMBRA_ALLOW_DEGRADED_NER is set — Sombra will degrade to Tier 1-only detection if the SLM sidecar is unavailable, instead of failing closed. Names/addresses may not be redacted during SLM outages.")
+		slog.Warn("OCU_SOMBRA_ALLOW_DEGRADED_NER is set — degrading to Tier 1-only detection instead of failing closed if the SLM sidecar is unavailable")
 	} else {
 		eng.FailClosedOnSLMError = true
 	}
@@ -92,10 +117,10 @@ func main() {
 	sidecarURL := config.Global.SLMSidecarURL
 	scanner, err := inference.NewRemoteScanner(sidecarURL)
 	if err != nil {
-		log.Fatalf("[FATAL] %v", err)
+		fatalf(err.Error())
 	}
 	eng.SetAIScanner(scanner)
-	log.Printf("[INFO] Tier 2 AI active via SLM sidecar: %s", sidecarURL)
+	slog.Info("Tier 2 AI active via SLM sidecar", "sidecar_url", sidecarURL)
 
 	// Setup Multi-Model Router — allowlist configured via configs/config.yaml
 	// (sombra_allowed_domains); adding a new provider doesn't require a rebuild.
@@ -117,15 +142,15 @@ func main() {
 
 	if mockURL := os.Getenv("SOMBRA_MOCK_AI_URL"); mockURL != "" {
 		r.Register(router.NewLocal("mock-ai", mockURL))
-		log.Printf("[INFO] Demo mode: mock-ai registered at %s", mockURL)
+		slog.Info("demo mode: mock-ai registered", "mock_url", mockURL)
 	}
 
 	// Initialize Immutable Audit Logger
 	auditor, err := audit.NewImmutableLogger("sombra_audit.log")
 	if err != nil {
-		log.Printf("[WARN] Failed to initialize Immutable Logger: %v", err)
+		slog.Warn("failed to initialize immutable logger", "error", err)
 	} else {
-		log.Printf("[INFO] Immutable Audit Log active. PubKey: %s", auditor.PublicKeyHex())
+		slog.Info("immutable audit log active", "public_key", auditor.PublicKeyHex())
 		defer auditor.Close()
 		if config.Global.RetentionEnabled {
 			auditor.SetRotation(
@@ -147,11 +172,11 @@ func main() {
 			time.Duration(config.Global.VaultRetentionDays)*24*time.Hour,
 			func(deleted int64, err error) {
 				if err != nil {
-					log.Printf("[WARN] retention sweep error: %v", err)
+					slog.Warn("retention sweep error", "error", err)
 					return
 				}
 				if deleted > 0 {
-					log.Printf("[INFO] retention sweep purged %d expired vault token(s)", deleted)
+					slog.Info("retention sweep purged expired vault tokens", "count", deleted)
 				}
 			},
 		)
@@ -159,7 +184,7 @@ func main() {
 
 	g, err := handler.NewGateway(eng, v, masterKey, r, auditor)
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to initialize gateway: %v", err)
+		fatalf("failed to initialize gateway", "error", err)
 	}
 
 	filePolicy := connector.DataPolicy{
@@ -196,7 +221,7 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 
-	log.Printf("[INFO] Sombra Gateway running on http://localhost:%s", port)
+	slog.Info("Sombra Gateway running", "addr", "http://localhost:"+port)
 
 	srv := &http.Server{
 		Addr:              ":" + port,
@@ -206,6 +231,6 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		fatalf("failed to start server", "error", err)
 	}
 }
