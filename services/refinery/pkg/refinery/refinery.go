@@ -468,21 +468,10 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 	// TIER 0.1: Embedded Base64 Evasion Shield
 	refined = tier01Base64Shield(e, refined, actor, preScanMap)
 
-	// Pre-compute structural PII spans (emails, URLs) to protect them from Tier 0 dictionary
-	// fragmentation. Without this guard, a dictionary term like "trejos" replaces the name
-	// fragment inside "e.trejos@gmail.com" before the email regex runs, breaking the address
-	// into "e.[PERSON_VIP_...]@gmail.com" and causing a partial PII leak.
-	structuralPIIRe := regexp.MustCompile(`(?i)\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b|https?://[^\s"<>\{\}\[\]\\]+`)
-	structuralSpans := structuralPIIRe.FindAllStringIndex(refined, -1)
-
 	// TIER 0: Dynamic Exclusion Dictionaries
-	for _, dictRule := range config.Global.Dictionaries {
-		for _, term := range dictRule.Terms {
-			refined, err = e.applyReplacementProtected(refined, term, dictRule.Type, "dictionary", actor, structuralSpans)
-			if err != nil {
-				return "", err
-			}
-		}
+	refined, err = tier0DictionaryShield(e, refined, actor)
+	if err != nil {
+		return "", err
 	}
 
 	// TIER 0.5: Entity Registry Pre-Pass
