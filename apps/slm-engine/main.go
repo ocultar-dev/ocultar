@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,8 +15,6 @@ var scanner inference.Tier2Engine
 
 // initLogging configures slog's default logger as structured JSON, with the
 // level controlled by OCU_LOG_LEVEL (debug|info|warn|error, default info).
-// This also redirects the standard log package's output through the same
-// JSON handler — see https://pkg.go.dev/log/slog#SetDefault.
 func initLogging() {
 	level := new(slog.LevelVar)
 	level.Set(slog.LevelInfo)
@@ -30,6 +27,13 @@ func initLogging() {
 		level.Set(slog.LevelError)
 	}
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+}
+
+// fatalf logs an error at Error level and exits — slog has no built-in
+// fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
+func fatalf(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
 }
 
 func handleScan(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +76,7 @@ func main() {
 	adapter := os.Getenv("SLM_ADAPTER")
 	if adapter == "" {
 		if legacy := os.Getenv("TIER2_ENGINE"); legacy != "" {
-			log.Println("[DEPRECATED] TIER2_ENGINE renamed to SLM_ADAPTER. Please update your config.")
+			slog.Warn("[DEPRECATED] TIER2_ENGINE renamed to SLM_ADAPTER, please update your config")
 			adapter = legacy
 		}
 	}
@@ -81,11 +85,11 @@ func main() {
 		// default
 		sidecarURL := os.Getenv("PYTHON_SIDECAR_URL")
 		if old := os.Getenv("PRIVACY_FILTER_URL"); old != "" {
-			log.Println("[DEPRECATED] PRIVACY_FILTER_URL renamed to PYTHON_SIDECAR_URL. Please update your config.")
+			slog.Warn("[DEPRECATED] PRIVACY_FILTER_URL renamed to PYTHON_SIDECAR_URL, please update your config")
 			sidecarURL = old
 		}
 		if sidecarURL == "" {
-			log.Fatal("[FATAL] PYTHON_SIDECAR_URL not set")
+			fatalf("PYTHON_SIDECAR_URL not set")
 		}
 		modelPath := os.Getenv("PRIVACY_FILTER_MODEL_PATH")
 		if modelPath == "" {
@@ -93,10 +97,10 @@ func main() {
 		}
 		scanner, err = inference.NewPrivacyFilterEngine(sidecarURL, modelPath)
 		if err != nil {
-			log.Fatalf("failed to initialize privacy-filter scanner: %v", err)
+			fatalf("failed to initialize privacy-filter scanner", "error", err)
 		}
 	default:
-		log.Fatalf("[FATAL] Unsupported SLM_ADAPTER: %q (slm-engine only supports \"privacy-filter\"; openai-chat/llama.cpp is handled by the refinery directly)", adapter)
+		fatalf("unsupported SLM_ADAPTER (slm-engine only supports \"privacy-filter\"; openai-chat/llama.cpp is handled by the refinery directly)", "adapter", adapter)
 	}
 	defer scanner.Close()
 
@@ -107,6 +111,6 @@ func main() {
 	if port == "" {
 		port = "8085"
 	}
-	log.Printf("SLM sidecar running on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	slog.Info("SLM sidecar running", "port", port)
+	fatalf("server failed", "error", http.ListenAndServe(":"+port, nil))
 }
