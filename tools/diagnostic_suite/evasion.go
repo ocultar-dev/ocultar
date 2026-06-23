@@ -3,13 +3,21 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/ocultar-dev/ocultar/pkg/config"
 	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
 )
+
+// fatalf logs an error at Error level and exits — slog has no built-in
+// fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
+func fatalf(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
+}
 
 type AdversarialTestCase struct {
 	Name     string
@@ -22,14 +30,14 @@ func main() {
 	config.InitDefaults()
 	v, err := vault.New(config.Settings{VaultBackend: "duckdb"}, ":memory:")
 	if err != nil {
-		log.Fatalf("Vault init failed: %v", err)
+		fatalf("vault init failed", "error", err)
 	}
 	defer v.Close()
 
 	masterKey := []byte("01234567890123456789012345678901")
 	eng, err := refinery.NewRefinery(v, masterKey)
 	if err != nil {
-		log.Fatalf("Failed to initialize refinery: %v", err)
+		fatalf("failed to initialize refinery", "error", err)
 	}
 
 	testCases := []AdversarialTestCase{
