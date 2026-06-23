@@ -478,29 +478,7 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 	refined = tier05EntityRegistry(e, refined)
 
 	// TIER 1: Centralized Deterministic Pipeline
-	eng := pii.NewRefinery()
-	if config.Global.AliasMapping != nil {
-		eng.SetMapping(config.Global.AliasMapping)
-	}
-
-	// Scan first to identify structured PII (SSN, Credit Cards, etc.)
-	detections := eng.Scan(refined)
-	log.Printf("[DEBUG] Tier 1 Scan found %d detections", len(detections))
-
-	tokens := tokenPattern.FindAllStringIndex(refined, -1)
-	refined, err = eng.Redact(refined, func(d pii.DetectionResult) (string, error) {
-		overlap := false
-		for _, t := range tokens {
-			if d.Range.Start < t[1] && d.Range.End > t[0] {
-				overlap = true
-				break
-			}
-		}
-		if overlap {
-			return d.Value, nil
-		}
-		return e.getOrSetSecureResult(d, actor)
-	})
+	refined, err = tier1RuleEngine(e, refined, actor)
 	if err != nil {
 		return "", err
 	}
