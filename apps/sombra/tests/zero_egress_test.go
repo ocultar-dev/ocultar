@@ -44,7 +44,10 @@ func TestZeroEgress_RawPIINeverReachesUpstream(t *testing.T) {
 
 	masterKey := make([]byte, 32)
 	config.InitDefaults()
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 
 	upstream := &capturingAdapter{}
 	r := router.New("capturing-model", []string{"mock-capture"})

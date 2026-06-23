@@ -18,7 +18,10 @@ func TestCrawlLocalDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to init vault: %v", err)
 	}
-	eng := refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	eng, err := refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	if err != nil {
+		t.Fatalf("Failed to init refinery: %v", err)
+	}
 
 	crawler := NewCrawler(eng)
 

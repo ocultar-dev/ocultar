@@ -208,7 +208,10 @@ func main() {
 	}
 	defer vaultProvider.Close() //nolint:errcheck
 
-	eng := refinery.NewRefinery(vaultProvider, masterKey)
+	eng, err := refinery.NewRefinery(vaultProvider, masterKey)
+	if err != nil {
+		log.Fatal("Failed to initialize refinery: ", err)
+	}
 	eng.DryRun = *dryRun
 	eng.Report = *report
 

@@ -48,7 +48,10 @@ func (m *MockVault) PurgeExpiredTokens(olderThan time.Time) (int64, error) { ret
 func (m *MockVault) DeleteToken(token string) (bool, error)                { return false, nil }
 
 func newTestEng(scanner *DomainMockScanner) *Refinery {
-	eng := NewRefinery(&MockVault{}, []byte("01234567890123456789012345678901"))
+	eng, err := NewRefinery(&MockVault{}, []byte("01234567890123456789012345678901"))
+	if err != nil {
+		panic(err)
+	}
 	eng.AIScanner = scanner
 	return eng
 }

@@ -45,7 +45,10 @@ func setupTestEnv(t *testing.T) *handler.Gateway {
 
 	masterKey := make([]byte, 32)
 	config.InitDefaults()
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 
 	r := router.New("mock-model", []string{"mock-internal"})
 	r.Register(&mockModelAdapter{name: "mock-model"})

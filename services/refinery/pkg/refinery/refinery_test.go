@@ -91,7 +91,10 @@ func TestFalseNegativeKPI(t *testing.T) {
 
 	for _, tc := range corpus {
 		t.Run(tc.Name, func(t *testing.T) {
-			eng := refinery.NewRefinery(v, masterKey)
+			eng, err := refinery.NewRefinery(v, masterKey)
+			if err != nil {
+				t.Fatalf("Failed to init refinery: %v", err)
+			}
 			eng.DryRun = false
 			eng.Report = false
 
@@ -135,7 +138,10 @@ func TestSinglePassScanning(t *testing.T) {
 	defer v.Close()
 
 	mock := &MockAIScanner{}
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("Failed to init refinery: %v", err)
+	}
 	eng.AIScanner = mock
 
 	// Complex nested structure with Base64 and nested JSON
@@ -147,7 +153,7 @@ func TestSinglePassScanning(t *testing.T) {
 		},
 	}
 
-	_, err := eng.ProcessInterface(data, "test-actor")
+	_, err = eng.ProcessInterface(data, "test-actor")
 	if err != nil {
 		t.Fatalf("ProcessInterface failed: %v", err)
 	}

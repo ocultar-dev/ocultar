@@ -27,7 +27,10 @@ func main() {
 	defer v.Close()
 
 	masterKey := []byte("01234567890123456789012345678901")
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		log.Fatalf("Failed to initialize refinery: %v", err)
+	}
 
 	testCases := []AdversarialTestCase{
 		{

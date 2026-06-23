@@ -29,7 +29,10 @@ func setupTestStack(t *testing.T, upstreamURL string) (*proxy.Handler, vault.Pro
 	masterKey := []byte("01234567890123456789012345678901") // 32 bytes
 
 	config.InitDefaults()
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	eng.Serve = "proxy"
 
 	h, err := proxy.NewHandler(eng, v, masterKey, upstreamURL)
@@ -159,7 +162,10 @@ func TestVaultRehydrateString(t *testing.T) {
 
 	masterKey := []byte("01234567890123456789012345678901")
 	config.InitDefaults()
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	eng.Serve = "proxy"
 
 	// Redact a string — this vaults the token.

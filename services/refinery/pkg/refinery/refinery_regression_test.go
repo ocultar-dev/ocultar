@@ -27,7 +27,11 @@ func newRegressionEngine(t *testing.T) *refinery.Refinery {
 		t.Fatalf("vault: %v", err)
 	}
 	t.Cleanup(func() { v.Close() })
-	return refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	eng, err := refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
+	return eng
 }
 
 // regressionCase describes a single labeled test.

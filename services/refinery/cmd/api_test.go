@@ -25,7 +25,10 @@ func TestAPIEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to init vault: %v", err)
 	}
-	eng := refinery.NewRefinery(v, []byte("testing123"))
+	eng, err := refinery.NewRefinery(v, []byte("testing123"))
+	if err != nil {
+		t.Fatalf("Failed to init refinery: %v", err)
+	}
 
 	// 2. Pre-seed the Vault
 	piiHash, encrypted := "dummy_hash_8f90", "encrypted_payload"

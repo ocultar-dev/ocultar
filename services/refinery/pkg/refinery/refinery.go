@@ -98,7 +98,7 @@ type Refinery struct {
 }
 
 // NewRefinery constructs an Refinery using a vault.Provider as its storage backend.
-func NewRefinery(v vault.Provider, key []byte) *Refinery {
+func NewRefinery(v vault.Provider, key []byte) (*Refinery, error) {
 	count := int64(0)
 	if v != nil {
 		count = v.CountAll()
@@ -108,7 +108,7 @@ func NewRefinery(v vault.Provider, key []byte) *Refinery {
 	r := hkdf.New(sha256.New, key, nil, []byte("ocultar-token-hmac"))
 	hmacKey := make([]byte, 32)
 	if _, err := io.ReadFull(r, hmacKey); err != nil {
-		panic(fmt.Sprintf("failed to derive HMAC key via HKDF: %v", err))
+		return nil, fmt.Errorf("failed to derive HMAC key via HKDF: %w", err)
 	}
 
 	e := &Refinery{
@@ -122,7 +122,7 @@ func NewRefinery(v vault.Provider, key []byte) *Refinery {
 	}
 	e.sessionCache.Store(&sync.Map{})
 	e.VaultCount.Store(count)
-	return e
+	return e, nil
 }
 
 // SetAuditLogger injects a functional Enterprise SIEM logger.

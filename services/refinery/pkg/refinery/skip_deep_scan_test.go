@@ -27,7 +27,10 @@ func (s *SpyScanner) SetDomain(_ string)      {}
 func (s *SpyScanner) CircuitStateName() string { return "closed" }
 
 func newTestRefinery(scanner AIScanner) *Refinery {
-	eng := NewRefinery(&MockVault{}, []byte("01234567890123456789012345678901"))
+	eng, err := NewRefinery(&MockVault{}, []byte("01234567890123456789012345678901"))
+	if err != nil {
+		panic(err)
+	}
 	eng.AIScanner = scanner
 	return eng
 }

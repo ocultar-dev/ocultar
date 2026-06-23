@@ -28,7 +28,10 @@ func newTestHandler(t *testing.T) *Handler {
 		t.Fatalf("failed to init vault: %v", err)
 	}
 	t.Cleanup(func() { v.Close() }) //nolint:errcheck
-	eng := refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	eng, err := refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	return New(eng, "test-version", time.Now())
 }
 

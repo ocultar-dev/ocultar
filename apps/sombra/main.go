@@ -71,7 +71,10 @@ func main() {
 	}
 	defer v.Close()
 
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		log.Fatalf("Failed to initialize refinery: %v", err)
+	}
 
 	// Fail-closed by default: if the SLM sidecar is unreachable, block the request
 	// rather than silently degrading to Tier 1-only detection (which cannot catch

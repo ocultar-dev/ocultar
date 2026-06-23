@@ -32,7 +32,10 @@ func makeEntityRefinery(t *testing.T) (*refinery.Refinery, vault.Provider) {
 	masterKey := []byte("entity-test-key-32-bytes-padding")
 	config.InitDefaults()
 
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	return eng, v
 }
 

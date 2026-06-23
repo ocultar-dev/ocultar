@@ -44,7 +44,10 @@ func newCircuitBreakerTestGateway(t *testing.T, failClosed bool) (*handler.Gatew
 
 	masterKey := make([]byte, 32)
 	config.InitDefaults()
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	eng.SetAIScanner(erroringAIScanner{})
 	eng.FailClosedOnSLMError = failClosed
 

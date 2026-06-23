@@ -19,7 +19,10 @@ func TestGDPRComplianceHeuristics(t *testing.T) {
 	}
 	defer v.Close()
 
-	e := NewRefinery(v, []byte("0123456789abcdef0123456789abcdef"))
+	e, err := NewRefinery(v, []byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatalf("Failed to init refinery: %v", err)
+	}
 
 	testCases := []struct {
 		desc     string

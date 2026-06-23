@@ -23,7 +23,10 @@ func TestRefineBatchConcurrency(t *testing.T) {
 	masterKey := []byte("01234567890123456789012345678901")
 
 	config.InitDefaults()
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	eng.DryRun = false
 	eng.Report = false
 

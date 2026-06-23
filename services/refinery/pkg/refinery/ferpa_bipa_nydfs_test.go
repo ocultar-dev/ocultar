@@ -17,7 +17,11 @@ func setupComplianceRefinery(t *testing.T) *Refinery {
 		t.Fatalf("create vault: %v", err)
 	}
 	t.Cleanup(func() { v.Close() })
-	return NewRefinery(v, []byte("0123456789abcdef0123456789abcdef"))
+	eng, err := NewRefinery(v, []byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
+	return eng
 }
 
 // assertRedacted verifies that none of the given PII substrings appear in the refined output.

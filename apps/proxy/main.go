@@ -92,7 +92,10 @@ func main() {
 	}
 	defer vaultProvider.Close()
 
-	eng := refinery.NewRefinery(vaultProvider, masterKey)
+	eng, err := refinery.NewRefinery(vaultProvider, masterKey)
+	if err != nil {
+		log.Fatalf("[FATAL] Failed to initialize refinery: %v", err)
+	}
 	eng.Serve = "proxy"
 
 	// Immutable audit log — active when OCU_AUDIT_PRIVATE_KEY is set.

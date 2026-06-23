@@ -64,7 +64,10 @@ func setupTestProxy(t *testing.T, vaultFails bool, aiFails bool) (*httptest.Serv
 	// 2. Configure Refinery
 	mockVault := &MockVault{ShouldFail: vaultFails}
 	masterKey := make([]byte, 32) // dummy key
-	eng := refinery.NewRefinery(mockVault, masterKey)
+	eng, err := refinery.NewRefinery(mockVault, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	eng.AIScanner = &MockAIScanner{ShouldFail: aiFails}
 
 	// 3. Configure Proxy

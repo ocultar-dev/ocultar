@@ -42,7 +42,10 @@ func TestFailClosed_RefineryCrash_NeverForwardsRaw(t *testing.T) {
 
 	masterKey := make([]byte, 32)
 	config.InitDefaults()
-	eng := refinery.NewRefinery(v, masterKey)
+	eng, err := refinery.NewRefinery(v, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 
 	upstream := &recordingAdapter{}
 	r := router.New("recording-model", []string{"http://mock-upstream"})

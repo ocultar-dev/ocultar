@@ -181,7 +181,10 @@ func TestProxyHandler_PII_RedactedBeforeUpstream(t *testing.T) {
 	defer vaultProvider.Close()
 
 	config.InitDefaults()
-	eng := refinery.NewRefinery(vaultProvider, masterKey)
+	eng, err := refinery.NewRefinery(vaultProvider, masterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 
 	handler, err := proxy.NewHandler(eng, vaultProvider, masterKey, target.URL)
 	if err != nil {

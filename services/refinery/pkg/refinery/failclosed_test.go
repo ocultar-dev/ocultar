@@ -132,7 +132,10 @@ func TestFailClosed_SLMUnreachable(t *testing.T) {
 	upstream := fakeUpstreamServer()
 	defer upstream.Close()
 
-	eng := refinery.NewRefinery(&passingVault{}, fcMasterKey)
+	eng, err := refinery.NewRefinery(&passingVault{}, fcMasterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	eng.SetAIScanner(&failingScanner{})
 
 	ps := newTestProxy(t, eng, &passingVault{}, upstream.URL)
@@ -162,7 +165,10 @@ func TestFailClosed_VaultWriteFailure(t *testing.T) {
 	upstream := fakeUpstreamServer()
 	defer upstream.Close()
 
-	eng := refinery.NewRefinery(&failingVault{}, fcMasterKey)
+	eng, err := refinery.NewRefinery(&failingVault{}, fcMasterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 
 	ps := newTestProxy(t, eng, &failingVault{}, upstream.URL)
 	defer ps.Close()
@@ -191,7 +197,10 @@ func TestFailClosed_SlowVault(t *testing.T) {
 	upstream := fakeUpstreamServer()
 	defer upstream.Close()
 
-	eng := refinery.NewRefinery(&slowVault{delay: 15 * time.Second}, fcMasterKey)
+	eng, err := refinery.NewRefinery(&slowVault{delay: 15 * time.Second}, fcMasterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 
 	ps := newTestProxy(t, eng, &slowVault{delay: 15 * time.Second}, upstream.URL)
 	defer ps.Close()
@@ -234,7 +243,10 @@ func TestFailClosed_QueueFull(t *testing.T) {
 	defer slowUpstream.Close()
 	defer func() { close(gate) }()
 
-	eng := refinery.NewRefinery(&passingVault{}, fcMasterKey)
+	eng, err := refinery.NewRefinery(&passingVault{}, fcMasterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	ps := newTestProxy(t, eng, &passingVault{}, slowUpstream.URL)
 	defer ps.Close()
 
@@ -295,7 +307,10 @@ func TestFailClosed_HappyPath(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	eng := refinery.NewRefinery(&passingVault{}, fcMasterKey)
+	eng, err := refinery.NewRefinery(&passingVault{}, fcMasterKey)
+	if err != nil {
+		t.Fatalf("NewRefinery: %v", err)
+	}
 	ps := newTestProxy(t, eng, &passingVault{}, upstream.URL)
 	defer ps.Close()
 

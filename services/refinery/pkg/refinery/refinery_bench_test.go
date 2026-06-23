@@ -29,7 +29,11 @@ func newBenchEngine(b *testing.B) *refinery.Refinery {
 		b.Fatalf("vault: %v", err)
 	}
 	b.Cleanup(func() { v.Close() })
-	return refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	eng, err := refinery.NewRefinery(v, []byte("01234567890123456789012345678901"))
+	if err != nil {
+		b.Fatalf("NewRefinery: %v", err)
+	}
+	return eng
 }
 
 // BenchmarkPipeline_SingleEmail is the baseline — one email address, minimal payload.
