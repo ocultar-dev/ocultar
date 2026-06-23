@@ -6,7 +6,7 @@ package router
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/url"
 	"sync"
 )
@@ -76,7 +76,7 @@ func (r *Router) Send(ctx context.Context, modelName string, messages []Message,
 
 	// ZERO-EGRESS VALIDATION: Fail-Closed Egress Hardening
 	if !isApprovedDomain(adapter.Endpoint(), r.allowedDomains) {
-		log.Printf("[SECURITY ALERT] Egress Blocked: Model %q attempted to call unapproved domain %q", modelName, adapter.Endpoint())
+		slog.Warn("security alert: egress blocked, model attempted to call unapproved domain", "model", modelName, "domain", adapter.Endpoint())
 		return "", fmt.Errorf("OCULTAR Zero-Egress Block: domain %q is not in the approved list (Fail-Closed)", adapter.Endpoint())
 	}
 
