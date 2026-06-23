@@ -28,7 +28,7 @@ jobs:
             ext: ".exe"
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
@@ -83,7 +83,7 @@ jobs:
           fi >> SHA256SUMS-${{ matrix.goos }}-${{ matrix.goarch }}.txt
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/
@@ -91,7 +91,7 @@ jobs:
   sbom:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
@@ -107,7 +107,7 @@ jobs:
         run: cyclonedx-gomod mod -output sbom.json -json
         working-directory: services/refinery
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@v7.0.1
         with:
           name: sbom
           path: services/refinery/sbom.json
@@ -116,7 +116,7 @@ jobs:
     needs: [build, sbom]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -127,7 +127,7 @@ jobs:
         run: mkdir -p dist && cp artifacts/* dist/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        uses: softprops/action-gh-release@v3.0.1
         with:
           generate_release_notes: true
           files: dist/**
