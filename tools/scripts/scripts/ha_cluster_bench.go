@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -31,8 +31,15 @@ func generateRandomHash() string {
 	return hex.EncodeToString(b)
 }
 
+// fatalf logs an error at Error level and exits — slog has no built-in
+// fatal-and-exit, so this restores the log.Fatalf call sites it replaces.
+func fatalf(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
+}
+
 func main() {
-	log.Println("[INFO] Starting HA Cluster Verification & Benchmark")
+	slog.Info("starting HA cluster verification & benchmark")
 
 	nodes := make([]vault.Provider, numNodes)
 	var nodesMu sync.RWMutex
@@ -48,13 +55,13 @@ func main() {
 	for i := 0; i < numNodes; i++ {
 		nodes[i], err = vault.New(config.Settings{VaultBackend: "postgres", PostgresDSN: dsn}, "")
 		if err != nil {
-			log.Fatalf("Failed to initialize node %d: %v", i, err)
+			fatalf("failed to initialize node", "node", i, "error", err)
 		}
-		log.Printf("[INFO] Node %d initialized successfully.", i)
+		slog.Info("node initialized successfully", "node", i)
 	}
 
 	// Prepare records
-	log.Printf("[INFO] Generating %d unique PII hashes...", numRecords)
+	slog.Info("generating unique PII hashes", "count", numRecords)
 	records := make([]string, numRecords)
 	for i := 0; i < numRecords; i++ {
 		records[i] = generateRandomHash()
@@ -63,7 +70,7 @@ func main() {
 	start := time.Now()
 	var wg sync.WaitGroup
 
-	log.Printf("[INFO] Launching %d concurrent workers across %d nodes...", concurrency, numNodes)
+	slog.Info("launching concurrent workers", "workers", concurrency, "nodes", numNodes)
 
 	// Benchmark Concurrent Writes
 	for i := 0; i < concurrency; i++ {
@@ -91,7 +98,7 @@ func main() {
 				// In a real cluster, nodes race to insert. Safe due to ON CONFLICT DO NOTHING.
 				_, err := node.StoreToken(hash, token, encPII)
 				if err != nil {
-					log.Printf("[ERROR] Worker %d (Node %d) failed insertion: %v", workerID, nodeIdx, err)
+					slog.Error("worker failed insertion", "worker", workerID, "node", nodeIdx, "error", err)
 					time.Sleep(10 * time.Millisecond) // backoff on failure
 				}
 			}
@@ -101,7 +108,7 @@ func main() {
 	// Simulate node failure and rolling restart
 	go func() {
 		time.Sleep(1 * time.Second)
-		log.Println("[WARN] SIMULATING NODE FAILURE: Dropping cluster node 1...")
+		slog.Warn("simulating node failure: dropping cluster node 1")
 
 		nodesMu.Lock()
 		nodes[1].Close()
@@ -109,7 +116,7 @@ func main() {
 		nodesMu.Unlock()
 
 		time.Sleep(500 * time.Millisecond)
-		log.Println("[INFO] SIMULATING ROLLING RESTART: Recovering cluster node 1...")
+		slog.Info("simulating rolling restart: recovering cluster node 1")
 
 		newNode, err := vault.New(config.Settings{VaultBackend: "postgres", PostgresDSN: dsn}, "")
 
@@ -118,31 +125,27 @@ func main() {
 		nodesMu.Unlock()
 
 		if err != nil {
-			log.Printf("[ERROR] Rolling restart failed for node 1: %v", err)
+			slog.Error("rolling restart failed for node 1", "error", err)
 		} else {
-			log.Println("[INFO] Node 1 recovered gracefully.")
+			slog.Info("node 1 recovered gracefully")
 		}
 	}()
 
 	wg.Wait()
 	duration := time.Since(start)
 
-	log.Println("========================================")
-	log.Println("           HA BENCHMARK RESULTS         ")
-	log.Println("========================================")
-	log.Printf("Total duration    : %v", duration)
-	log.Printf("Ops per second    : %.0f inserts/sec", float64(numRecords*concurrency)/duration.Seconds())
+	slog.Info("HA benchmark results", "total_duration", duration, "ops_per_second", float64(numRecords*concurrency)/duration.Seconds())
 
 	// Clean shutdown check
 	for i, n := range nodes {
 		if n == nil {
-			log.Printf("[WARN] Node %d is nil, skipping close.", i)
+			slog.Warn("node is nil, skipping close", "node", i)
 			continue
 		}
 		if err := n.Close(); err != nil {
-			log.Printf("[WARN] Node %d failed to cleanly shut down: %v", i, err)
+			slog.Warn("node failed to cleanly shut down", "node", i, "error", err)
 		} else {
-			log.Printf("[INFO] Node %d gracefully detached from cluster.", i)
+			slog.Info("node gracefully detached from cluster", "node", i)
 		}
 	}
 
@@ -152,11 +155,10 @@ func main() {
 
 	count := validator.CountAll()
 	if count == int64(numRecords) {
-		log.Printf("[SUCCESS] Vault Idempotency Verified! Expected %d records, got %d.", numRecords, count)
+		slog.Info("vault idempotency verified", "expected", numRecords, "got", count)
 	} else {
-		log.Fatalf("[FAILED] Cluster race condition detected! Expected %d records, got %d.", numRecords, count)
-		os.Exit(1)
+		fatalf("cluster race condition detected", "expected", numRecords, "got", count)
 	}
 
-	log.Println("[SUCCESS] Postgres HA stateless scaling validated successfully in multi-node topology.")
+	slog.Info("Postgres HA stateless scaling validated successfully in multi-node topology")
 }
