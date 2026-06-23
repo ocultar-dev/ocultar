@@ -86,11 +86,9 @@ func main() {
 		eng.FailClosedOnSLMError = true
 	}
 
-	// Initialize Tier 2 SLM Scanner if sidecar URL is configured
-	sidecarURL := os.Getenv("SLM_SIDECAR_URL")
-	if sidecarURL == "" {
-		sidecarURL = "http://localhost:8085"
-	}
+	// Initialize Tier 2 SLM Scanner — endpoint configured via configs/config.yaml
+	// (slm_sidecar_url), defaulting to SLM_SIDECAR_URL/localhost:8085.
+	sidecarURL := config.Global.SLMSidecarURL
 	scanner, err := inference.NewRemoteScanner(sidecarURL)
 	if err != nil {
 		log.Fatalf("[FATAL] %v", err)
@@ -98,9 +96,9 @@ func main() {
 	eng.SetAIScanner(scanner)
 	log.Printf("[INFO] Tier 2 AI active via SLM sidecar: %s", sidecarURL)
 
-	// Setup Multi-Model Router
-	allowedDomains := []string{"generativelanguage.googleapis.com", "api.openai.com", "api.mistral.ai", "api.anthropic.com", "127.0.0.1"}
-	r := router.New("gemini-flash-latest", allowedDomains)
+	// Setup Multi-Model Router — allowlist configured via configs/config.yaml
+	// (sombra_allowed_domains); adding a new provider doesn't require a rebuild.
+	r := router.New("gemini-flash-latest", config.Global.SombraAllowedDomains)
 
 	gemini := router.NewGemini("gemini-flash-latest", "", "GEMINI_API_KEY", "gemini-2.0-flash")
 	r.Register(gemini)

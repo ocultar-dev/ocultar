@@ -149,11 +149,9 @@ func main() {
 		)
 	}
 
-	// Tier 2 AI NER — active when SLM_SIDECAR_URL is set (defaults to localhost:8085).
-	sidecarURL := os.Getenv("SLM_SIDECAR_URL")
-	if sidecarURL == "" {
-		sidecarURL = "http://localhost:8085"
-	}
+	// Tier 2 AI NER — endpoint configured via configs/config.yaml (slm_sidecar_url),
+	// defaulting to SLM_SIDECAR_URL/localhost:8085.
+	sidecarURL := config.Global.SLMSidecarURL
 	scanner, err := inference.NewRemoteScanner(sidecarURL)
 	if err != nil {
 		log.Fatalf("[FATAL] %v", err)

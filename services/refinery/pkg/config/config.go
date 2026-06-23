@@ -96,6 +96,17 @@ type Settings struct {
 	// JWTSecret is the HS256 secret used to validate Bearer tokens in Sombra.
 	JWTSecret string `yaml:"jwt_secret" json:"jwt_secret"`
 
+	// --- Sombra Gateway ---
+
+	// SLMSidecarURL is the Tier 2 AI NER sidecar endpoint, shared by the proxy
+	// and Sombra. Defaults to the SLM_SIDECAR_URL env var, falling back to the
+	// local sidecar's default port if neither is set.
+	SLMSidecarURL string `yaml:"slm_sidecar_url" json:"slm_sidecar_url"`
+	// SombraAllowedDomains is the fail-closed allowlist of upstream LLM-provider
+	// domains Sombra's router may egress to. Adding a new model provider only
+	// requires adding its domain here, not a rebuild.
+	SombraAllowedDomains []string `yaml:"sombra_allowed_domains" json:"sombra_allowed_domains"`
+
 	// --- Data Retention (GDPR Art. 5(1)(e) storage limitation) ---
 
 	// RetentionEnabled turns on automatic TTL purge of vault PII rows and
@@ -116,6 +127,15 @@ type Settings struct {
 }
 
 var Global Settings
+
+// defaultSLMSidecarURL mirrors the env-var-then-fallback pattern proxy and
+// sombra used to duplicate inline before reading it from config.yaml.
+func defaultSLMSidecarURL() string {
+	if u := os.Getenv("SLM_SIDECAR_URL"); u != "" {
+		return u
+	}
+	return "http://localhost:8085"
+}
 
 func initDefaultConfig() {
 	Global = Settings{
@@ -147,6 +167,14 @@ func initDefaultConfig() {
 		MaxPayloadSize:           5 * 1024 * 1024, // 5MB
 		PrometheusEnabled:        true,
 		JWTSecret:                os.Getenv("OCU_JWT_SECRET"),
+		SLMSidecarURL:            defaultSLMSidecarURL(),
+		SombraAllowedDomains: []string{
+			"generativelanguage.googleapis.com",
+			"api.openai.com",
+			"api.mistral.ai",
+			"api.anthropic.com",
+			"127.0.0.1",
+		},
 
 		// Data Retention Defaults — enabled out of the box so the GDPR
 		// storage-limitation gap is closed by default, not just configurable.

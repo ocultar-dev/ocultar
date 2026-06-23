@@ -32,3 +32,17 @@ regexes:
 # crm_endpoint: "https://crm.corp.internal/api/v1/identities"
 # crm_api_key: "your-sync-token-here"
 # sync_interval: "1h"
+
+# Sombra Gateway
+# slm_sidecar_url: Tier 2 AI NER endpoint shared by the proxy and Sombra.
+#   Defaults to the SLM_SIDECAR_URL env var, then http://localhost:8085.
+# sombra_allowed_domains: fail-closed allowlist of upstream LLM-provider
+#   domains Sombra's router may egress to. Add a domain here to support a new
+#   model provider — no rebuild required.
+# slm_sidecar_url: "http://localhost:8085"
+# sombra_allowed_domains:
+#   - "generativelanguage.googleapis.com"
+#   - "api.openai.com"
+#   - "api.mistral.ai"
+#   - "api.anthropic.com"
+#   - "127.0.0.1"

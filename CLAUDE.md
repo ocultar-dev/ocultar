@@ -107,7 +107,7 @@ OCULTAR primarily uses **Doppler** for secret management. If running manually, c
 | `OCU_SALT` | Per-deployment salt |
 | `OCU_PROXY_TARGET` | Upstream API base URL |
 | `OCU_PROXY_PORT` | Proxy listen port (default `8081`) |
-| `SLM_SIDECAR_URL` | SLM sidecar endpoint (default `http://localhost:8085`) |
+| `SLM_SIDECAR_URL` | SLM sidecar endpoint (default `http://localhost:8085`). In `apps/proxy` and `apps/sombra` this becomes the default for `configs/config.yaml`'s `slm_sidecar_url`, which takes precedence if set. |
 | `SLM_ADAPTER` | Sidecar protocol: `privacy-filter` (default) or `openai-chat` (llama.cpp/Qwen) |
 | `OCU_JWT_SECRET` | HS256 secret for Sombra JWT Bearer validation (generate: `openssl rand -hex 32`). If unset, Sombra is in insecure dev mode. |
 | `OCU_AUDIT_PRIVATE_KEY` | Hex-encoded 32-byte Ed25519 seed for immutable audit log (generate: `openssl rand -hex 32`) |
