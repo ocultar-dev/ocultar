@@ -7,9 +7,12 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/connector"
+	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/metrics"
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/router"
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/scrubber"
 	"github.com/ocultar-dev/ocultar/pkg/audit"
@@ -20,6 +23,19 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// statusRecorder captures the HTTP status code written by a handler so it
+// can be reported to metrics after the fact, without touching every
+// individual http.Error/WriteHeader call site.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusRecorder) WriteHeader(code int) {
+	s.status = code
+	s.ResponseWriter.WriteHeader(code)
+}
+
 // Gateway ties together the Data Connectors, the OCULTAR Refinery,
 // and the Multi-Model Router.
 type Gateway struct {
@@ -29,10 +45,15 @@ type Gateway struct {
 	vault      vault.Provider
 	masterKey  []byte
 	auditor    *audit.ImmutableLogger
+	scrubber   *scrubber.Scrubber
 }
 
 // NewGateway creates a new Sombra gateway.
-func NewGateway(eng *refinery.Refinery, v vault.Provider, masterKey []byte, r *router.Router, auditor *audit.ImmutableLogger) *Gateway {
+func NewGateway(eng *refinery.Refinery, v vault.Provider, masterKey []byte, r *router.Router, auditor *audit.ImmutableLogger) (*Gateway, error) {
+	sc, err := scrubber.New(v, masterKey)
+	if err != nil {
+		return nil, fmt.Errorf("gateway: init scrubber: %w", err)
+	}
 	return &Gateway{
 		connectors: make(map[string]connector.Connector),
 		router:     r,
@@ -40,7 +61,8 @@ func NewGateway(eng *refinery.Refinery, v vault.Provider, masterKey []byte, r *r
 		vault:      v,
 		masterKey:  masterKey,
 		auditor:    auditor,
-	}
+		scrubber:   sc,
+	}, nil
 }
 
 // RegisterConnector adds a new data source adapter.
@@ -55,6 +77,14 @@ func (g *Gateway) RegisterConnector(c connector.Connector) {
 //   - prompt: the user's question or instruction
 //   - source_id: connector-specific ID (or file upload)
 func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+	w = rec
+	defer func() {
+		metrics.RequestsTotal.WithLabelValues("query", strconv.Itoa(rec.status)).Inc()
+		metrics.RequestLatency.WithLabelValues("query").Observe(time.Since(start).Seconds())
+	}()
+
 	// 1. Parse request.
 	if err := r.ParseMultipartForm(32 << 20); err != nil && err != http.ErrNotMultipart {
 		http.Error(w, "failed to parse form", http.StatusBadRequest)
@@ -148,8 +178,7 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 	// refinery runs. This prevents Tier 1.1 (libphonenumber) from tagging
 	// account numbers as [PHONE_...] and Tier 1.5 (greeting scanner) from
 	// splitting emails at the @ sign.
-	sc := scrubber.New(g.vault, g.masterKey)
-	prescrubbedData, err := sc.Prescrub(string(fetchResp.Body))
+	prescrubbedData, err := g.scrubber.Prescrub(string(fetchResp.Body))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("pre-scrub failed: %v", err), http.StatusInternalServerError)
 		return
@@ -166,6 +195,7 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 			var processed interface{}
 			processed, err = g.eng.ProcessInterface(jsonData, fetchReq.Actor)
 			if err != nil {
+				metrics.FailClosedTotal.WithLabelValues("redaction_data").Inc()
 				http.Error(w, fmt.Sprintf("structured redaction failed: %v", err), http.StatusInternalServerError)
 				return
 			}
@@ -185,12 +215,14 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
+		metrics.FailClosedTotal.WithLabelValues("redaction_data").Inc()
 		http.Error(w, fmt.Sprintf("redaction refinery failed (data): %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	redactedPrompt, err := g.eng.RefineString(prompt, fetchReq.Actor, nil)
 	if err != nil {
+		metrics.FailClosedTotal.WithLabelValues("redaction_prompt").Inc()
 		http.Error(w, fmt.Sprintf("redaction refinery failed (prompt): %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -220,11 +252,16 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 	// 5. Re-hydrate the tokens in the AI's response using the vault.
 	rehydratedResponse, err := proxy.RehydrateString(g.vault, g.masterKey, aiResponse)
 	if err != nil {
+		metrics.RehydrationFailuresTotal.WithLabelValues("query").Inc()
 		if g.auditor != nil {
 			g.auditor.Log(actor, "AI_ROUTING", modelName, "FAILED", "Re-hydration error")
 		}
-		http.Error(w, fmt.Sprintf("re-hydration failed: %v", err), http.StatusInternalServerError)
-		return
+		if !config.Global.RehydrateFallbackEnabled {
+			http.Error(w, fmt.Sprintf("re-hydration failed: %v", err), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("[WARN] Re-hydration failed, falling back to tokenized response (Safety: ON)")
+		rehydratedResponse = aiResponse // Return tokens instead of leaking data or failing
 	}
 
 	if g.auditor != nil {

@@ -19,7 +19,11 @@ func newTestScrubber(t *testing.T) *scrubber.Scrubber {
 	}
 	t.Cleanup(func() { v.Close() })
 	key := make([]byte, 32)
-	return scrubber.New(v, key)
+	sc, err := scrubber.New(v, key)
+	if err != nil {
+		t.Fatalf("scrubber init: %v", err)
+	}
+	return sc
 }
 
 // assertRedacted checks that original PII is not present in output.
@@ -246,6 +250,48 @@ func TestPass7_TaxRefs(t *testing.T) {
 // ─────────────────────────────────────────────────────────────
 // Integration — real-world bank statement snippet
 // ─────────────────────────────────────────────────────────────
+
+// TestTokensAreHMACKeyedPerDeployment confirms scrubber-minted tokens are
+// derived from the deployment's master key (HMAC-SHA256), not a fixed,
+// unkeyed hash — the same input PII must tokenize differently under two
+// different master keys, matching refinery.Refinery's tokenization guarantee.
+func TestTokensAreHMACKeyedPerDeployment(t *testing.T) {
+	config.InitDefaults()
+	const iban = "FR7630006000011234567890189"
+
+	tokenFor := func(t *testing.T, key []byte) string {
+		t.Helper()
+		v, err := vault.New(config.Settings{VaultBackend: "duckdb"}, "")
+		if err != nil {
+			t.Fatalf("vault init: %v", err)
+		}
+		t.Cleanup(func() { v.Close() })
+		sc, err := scrubber.New(v, key)
+		if err != nil {
+			t.Fatalf("scrubber init: %v", err)
+		}
+		out, err := sc.Prescrub(iban)
+		if err != nil {
+			t.Fatalf("prescrub: %v", err)
+		}
+		return out
+	}
+
+	keyA := make([]byte, 32)
+	keyB := make([]byte, 32)
+	keyB[0] = 0xFF
+
+	tokenA := tokenFor(t, keyA)
+	tokenB := tokenFor(t, keyB)
+	tokenA2 := tokenFor(t, keyA)
+
+	if tokenA != tokenA2 {
+		t.Errorf("same master key should produce identical tokens, got %q vs %q", tokenA, tokenA2)
+	}
+	if tokenA == tokenB {
+		t.Errorf("different master keys must produce different tokens for the same PII value, got identical %q for both", tokenA)
+	}
+}
 
 func TestIntegration_RealBankStatement(t *testing.T) {
 	sc := newTestScrubber(t)

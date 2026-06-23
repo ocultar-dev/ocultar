@@ -18,6 +18,7 @@ import (
 	"github.com/ocultar-dev/ocultar/pkg/inference"
 	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -156,7 +157,10 @@ func main() {
 		)
 	}
 
-	g := handler.NewGateway(eng, v, masterKey, r, auditor)
+	g, err := handler.NewGateway(eng, v, masterKey, r, auditor)
+	if err != nil {
+		log.Fatalf("[FATAL] Failed to initialize gateway: %v", err)
+	}
 
 	filePolicy := connector.DataPolicy{
 		AllowedModels: []string{"gemini-flash-latest", "local-slm", "gpt-4o", "gpt-4o-mini", "mistral-large-latest", "claude-sonnet-4-6"},
@@ -189,6 +193,8 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"status": "ok"}`)
 	})
+
+	http.Handle("/metrics", promhttp.Handler())
 
 	log.Printf("[INFO] Sombra Gateway running on http://localhost:%s", port)
 

@@ -51,7 +51,10 @@ func TestFailClosed_RefineryCrash_NeverForwardsRaw(t *testing.T) {
 	r := router.New("recording-model", []string{"http://mock-upstream"})
 	r.Register(upstream)
 
-	gw := handler.NewGateway(eng, v, masterKey, r, nil)
+	gw, err := handler.NewGateway(eng, v, masterKey, r, nil)
+	if err != nil {
+		t.Fatalf("NewGateway: %v", err)
+	}
 	gw.RegisterConnector(connector.NewFileConnector("file", connector.DataPolicy{
 		AllowedModels: []string{"recording-model"},
 	}))

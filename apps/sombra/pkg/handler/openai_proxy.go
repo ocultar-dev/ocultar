@@ -5,11 +5,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/metrics"
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/router"
-	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/scrubber"
+	"github.com/ocultar-dev/ocultar/pkg/config"
 	"github.com/ocultar-dev/ocultar/pkg/proxy"
 )
 
@@ -36,6 +39,14 @@ func newCompletionID() string {
 // Flow: scrub each message → route to requested model → rehydrate response
 // → return standard OpenAI JSON (or real SSE token stream if stream:true).
 func (g *Gateway) HandleV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+	w = rec
+	defer func() {
+		metrics.RequestsTotal.WithLabelValues("chat_completions", strconv.Itoa(rec.status)).Inc()
+		metrics.RequestLatency.WithLabelValues("chat_completions").Observe(time.Since(start).Seconds())
+	}()
+
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -58,20 +69,20 @@ func (g *Gateway) HandleV1ChatCompletions(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	sc := scrubber.New(g.vault, g.masterKey)
 
 	// 1. PII redaction — every message content scrubbed independently.
 	for i, msg := range req.Messages {
 		if msg.Content == "" {
 			continue
 		}
-		prescrubbed, err := sc.Prescrub(msg.Content)
+		prescrubbed, err := g.scrubber.Prescrub(msg.Content)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("pre-scrub failed on message %d: %v", i, err), http.StatusInternalServerError)
 			return
 		}
 		redacted, err := g.eng.RefineString(prescrubbed, actor, nil)
 		if err != nil {
+			metrics.FailClosedTotal.WithLabelValues("redaction_chat_completions").Inc()
 			http.Error(w, fmt.Sprintf("redaction failed on message %d: %v", i, err), http.StatusInternalServerError)
 			return
 		}
@@ -100,11 +111,16 @@ func (g *Gateway) HandleV1ChatCompletions(w http.ResponseWriter, r *http.Request
 
 	rehydrated, err := proxy.RehydrateString(g.vault, g.masterKey, aiResp)
 	if err != nil {
+		metrics.RehydrationFailuresTotal.WithLabelValues("chat_completions").Inc()
 		if g.auditor != nil {
 			g.auditor.Log(actor, "PROXY_CHAT_COMPLETION", req.Model, "FAILED", "rehydration error")
 		}
-		http.Error(w, fmt.Sprintf("rehydration failed: %v", err), http.StatusInternalServerError)
-		return
+		if !config.Global.RehydrateFallbackEnabled {
+			http.Error(w, fmt.Sprintf("rehydration failed: %v", err), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("[WARN] Re-hydration failed, falling back to tokenized response (Safety: ON)")
+		rehydrated = aiResp // Return tokens instead of leaking data or failing
 	}
 
 	if g.auditor != nil {
@@ -179,15 +195,27 @@ func (g *Gateway) handleStreamingResponse(
 	streamErr := g.router.SendStream(httpCtx, req.Model, req.Messages, opts, func(delta string) error {
 		safe, err := rehy.Push(delta)
 		if err != nil {
-			return err
+			metrics.RehydrationFailuresTotal.WithLabelValues("chat_completions_stream").Inc()
+			if !config.Global.RehydrateFallbackEnabled {
+				return err
+			}
+			// Safety: ON — emit the best-effort output (failed tokens left
+			// in raw [TYPE_...] form) instead of aborting the stream.
 		}
 		emit(safe)
 		return nil
 	})
 
 	// Flush any token held at the end of the stream.
-	if remaining, err := rehy.Flush(); err == nil {
+	remaining, flushErr := rehy.Flush()
+	if flushErr != nil {
+		metrics.RehydrationFailuresTotal.WithLabelValues("chat_completions_stream").Inc()
+	}
+	if flushErr == nil || config.Global.RehydrateFallbackEnabled {
 		emit(remaining)
+	}
+	if flushErr != nil && !config.Global.RehydrateFallbackEnabled && streamErr == nil {
+		streamErr = flushErr
 	}
 
 	if streamErr != nil {

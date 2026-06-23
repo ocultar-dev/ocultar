@@ -55,7 +55,10 @@ func newCircuitBreakerTestGateway(t *testing.T, failClosed bool) (*handler.Gatew
 	r := router.New("mock-model", []string{"mock-internal"})
 	r.Register(upstream)
 
-	gw := handler.NewGateway(eng, v, masterKey, r, nil)
+	gw, err := handler.NewGateway(eng, v, masterKey, r, nil)
+	if err != nil {
+		t.Fatalf("NewGateway: %v", err)
+	}
 	gw.RegisterConnector(connector.NewFileConnector("file", connector.DataPolicy{
 		AllowedModels: []string{"mock-model"},
 	}))

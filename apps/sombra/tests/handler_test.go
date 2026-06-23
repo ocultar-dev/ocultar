@@ -14,7 +14,9 @@ import (
 	"github.com/ocultar-dev/ocultar/vault"
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/connector"
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/handler"
+	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/metrics"
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/router"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 // mockModelAdapter simulates an AI backend that just echoes the prompt
@@ -53,7 +55,10 @@ func setupTestEnv(t *testing.T) *handler.Gateway {
 	r := router.New("mock-model", []string{"mock-internal"})
 	r.Register(&mockModelAdapter{name: "mock-model"})
 
-	gw := handler.NewGateway(eng, v, masterKey, r, nil)
+	gw, err := handler.NewGateway(eng, v, masterKey, r, nil)
+	if err != nil {
+		t.Fatalf("NewGateway: %v", err)
+	}
 
 	fc := connector.NewFileConnector("file", connector.DataPolicy{
 		AllowedModels: []string{"mock-model"},
@@ -105,5 +110,39 @@ func TestGateway_HandleQuery(t *testing.T) {
 
 	if !bytes.Contains([]byte(resp.Response), []byte("alice@company.org")) {
 		t.Errorf("expected original email in response, got: %s", resp.Response)
+	}
+}
+
+// TestGateway_HandleQuery_RecordsMetrics verifies HandleQuery actually
+// increments Sombra's Prometheus counters — apps/proxy has had request
+// metrics since its first version; Sombra previously had none.
+func TestGateway_HandleQuery_RecordsMetrics(t *testing.T) {
+	gw := setupTestEnv(t)
+
+	before := testutil.ToFloat64(metrics.RequestsTotal.WithLabelValues("query", "200"))
+
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	w.WriteField("connector", "file")
+	w.WriteField("model", "mock-model")
+	w.WriteField("prompt", "Summarize this file")
+	part, _ := w.CreateFormFile("file", "statement.txt")
+	part.Write([]byte("My email is bob@company.org"))
+	w.Close()
+
+	req := httptest.NewRequest("POST", "/query", &b)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer test-actor")
+
+	rr := httptest.NewRecorder()
+	gw.HandleQuery(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	after := testutil.ToFloat64(metrics.RequestsTotal.WithLabelValues("query", "200"))
+	if after-before != 1 {
+		t.Errorf("want RequestsTotal{query,200} delta=1, got %.0f", after-before)
 	}
 }
