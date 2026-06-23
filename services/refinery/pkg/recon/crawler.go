@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -90,7 +90,7 @@ func (c *Crawler) CrawlLocalDirectory(rootPath string) (HeatmapReport, error) {
 
 		content, err := extractText(path)
 		if err != nil {
-			log.Printf("[RECON-CRAWLER] Failed to extract text from %s: %v", path, err)
+			slog.Warn("recon crawler: failed to extract text", "path", path, "error", err)
 			return nil
 		}
 
