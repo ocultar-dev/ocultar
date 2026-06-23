@@ -97,6 +97,19 @@ type Refinery struct {
 	sessionCache atomic.Pointer[sync.Map]
 }
 
+// DeriveHMACKey derives the token-HMAC key from a master key via HKDF.
+// Any caller that mints vault tokens directly (rather than through Refinery's
+// own pipeline) must use this so token_id generation stays consistent with
+// the documented HMAC-SHA256(Derived_HMAC_Key, plaintext_PII) guarantee.
+func DeriveHMACKey(masterKey []byte) ([]byte, error) {
+	r := hkdf.New(sha256.New, masterKey, nil, []byte("ocultar-token-hmac"))
+	hmacKey := make([]byte, 32)
+	if _, err := io.ReadFull(r, hmacKey); err != nil {
+		return nil, fmt.Errorf("failed to derive HMAC key via HKDF: %w", err)
+	}
+	return hmacKey, nil
+}
+
 // NewRefinery constructs an Refinery using a vault.Provider as its storage backend.
 func NewRefinery(v vault.Provider, key []byte) (*Refinery, error) {
 	count := int64(0)
@@ -104,11 +117,9 @@ func NewRefinery(v vault.Provider, key []byte) (*Refinery, error) {
 		count = v.CountAll()
 	}
 
-	// Derive HMAC key from MasterKey via HKDF for token generation
-	r := hkdf.New(sha256.New, key, nil, []byte("ocultar-token-hmac"))
-	hmacKey := make([]byte, 32)
-	if _, err := io.ReadFull(r, hmacKey); err != nil {
-		return nil, fmt.Errorf("failed to derive HMAC key via HKDF: %w", err)
+	hmacKey, err := DeriveHMACKey(key)
+	if err != nil {
+		return nil, err
 	}
 
 	e := &Refinery{
