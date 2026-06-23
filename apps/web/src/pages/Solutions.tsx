@@ -1,5 +1,5 @@
 import {
-  Cpu, Network, Activity, Server, ShieldCheck, Database, Terminal,
+  Cpu, Network, Activity, ShieldCheck, Database, Terminal,
   ChevronRight, Layout, MessageSquare, FileText, Globe, Radio, Key,
   Box, GitMerge, ClipboardCheck, Fingerprint, type LucideIcon,
 } from "lucide-react";
