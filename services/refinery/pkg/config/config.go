@@ -4,7 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"regexp"
 
@@ -206,7 +206,7 @@ func LoadLocalNames() {
 
 	var names []string
 	if err := json.Unmarshal(data, &names); err != nil {
-		log.Printf("[ERROR] Failed to parse names.json: %v", err)
+		slog.Error("failed to parse names.json", "error", err)
 		return
 	}
 
@@ -215,7 +215,7 @@ func LoadLocalNames() {
 			Type:  "PERSON",
 			Terms: names,
 		})
-		log.Printf("[INFO] Local name dictionary loaded: %d names added to Tier 0 shield.", len(names))
+		slog.Info("local name dictionary loaded", "names_added", len(names))
 	}
 }
 
@@ -228,36 +228,36 @@ func LoadAliasMapping() {
 	}
 
 	if err != nil {
-		log.Printf("[WARN] Failed to read mapping.json: %v. CanonicalType will be empty.", err)
+		slog.Warn("failed to read mapping.json, CanonicalType will be empty", "error", err)
 		return
 	}
 
 	var mapping map[string]string
 	if err := json.Unmarshal(data, &mapping); err != nil {
-		log.Printf("[ERROR] Failed to parse mapping.json: %v", err)
+		slog.Error("failed to parse mapping.json", "error", err)
 		return
 	}
 
 	Global.AliasMapping = mapping
-	log.Printf("[INFO] Alias Mapping loaded: %d entities mapped to Google InfoTypes.", len(mapping))
+	slog.Info("alias mapping loaded", "entities_mapped", len(mapping))
 }
 
 // LoadRegulatoryPolicy reads the centralized governance mapping from embedded security data.
 func LoadRegulatoryPolicy() {
 	data, err := embeddedData.ReadFile("data/regulatory_policy.json")
 	if err != nil {
-		log.Printf("[WARN] Failed to read embedded regulatory_policy.json: %v. Using hardcoded fallbacks.", err)
+		slog.Warn("failed to read embedded regulatory_policy.json, using hardcoded fallbacks", "error", err)
 		return
 	}
 
 	var policy map[string]interface{}
 	if err := json.Unmarshal(data, &policy); err != nil {
-		log.Printf("[ERROR] Failed to parse embedded regulatory_policy.json: %v", err)
+		slog.Error("failed to parse embedded regulatory_policy.json", "error", err)
 		return
 	}
 
 	Global.RegulatoryPolicy = policy
-	log.Printf("[INFO] Embedded regulatory policy v%v loaded successfully.", policy["version"])
+	slog.Info("embedded regulatory policy loaded", "version", policy["version"])
 }
 
 // loadProtectedEntities attempts to read local dictionary terms from embedded data.
@@ -265,12 +265,14 @@ func LoadRegulatoryPolicy() {
 func loadProtectedEntities() {
 	data, err := embeddedData.ReadFile("data/protected_entities.json")
 	if err != nil {
-		log.Fatalf("[FATAL] [VULN-004] Failed reading embedded protected_entities.json! Refinery refusing to boot (fail-closed): %v", err)
+		slog.Error("[VULN-004] failed reading embedded protected_entities.json, refinery refusing to boot (fail-closed)", "error", err)
+		os.Exit(1)
 	}
 
 	var entities []string
 	if err := json.Unmarshal(data, &entities); err != nil {
-		log.Fatalf("[FATAL] [VULN-004] Failed parsing embedded protected_entities.json! Refinery refusing to boot (fail-closed): %v", err)
+		slog.Error("[VULN-004] failed parsing embedded protected_entities.json, refinery refusing to boot (fail-closed)", "error", err)
+		os.Exit(1)
 	}
 
 	if len(entities) > 0 {
@@ -279,8 +281,8 @@ func loadProtectedEntities() {
 			Terms: entities,
 		})
 	} else {
-		log.Fatalf("[FATAL] [VULN-004] Embedded protected_entities.json parsed successfully but contains zero entries. " +
-			"This would boot the refinery with no Dictionary Shield. Refinery refusing to start (fail-closed).")
+		slog.Error("[VULN-004] embedded protected_entities.json parsed successfully but contains zero entries; this would boot the refinery with no Dictionary Shield, refusing to start (fail-closed)")
+		os.Exit(1)
 	}
 }
 
@@ -297,13 +299,13 @@ func Load() {
 	data, err := os.ReadFile("configs/config.yaml")
 	if err == nil {
 		if err := yaml.Unmarshal(data, &Global); err != nil {
-			log.Printf("[ERROR] Failed to parse configs/config.yaml: %v", err)
+			slog.Error("failed to parse configs/config.yaml", "error", err)
 		} else {
-			log.Printf("[INFO] Configuration loaded from configs/config.yaml")
+			slog.Info("configuration loaded from configs/config.yaml")
 			CompileRegexes()
 		}
 	} else if !os.IsNotExist(err) {
-		log.Printf("[WARN] Failed to read configs/config.yaml: %v", err)
+		slog.Warn("failed to read configs/config.yaml", "error", err)
 	}
 }
 
