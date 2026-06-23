@@ -100,6 +100,7 @@ func main() {
 
 	// Immutable audit log — active when OCU_AUDIT_PRIVATE_KEY is set.
 	auditActive := false
+	var immutableLog *audit.ImmutableLogger
 	if keyHex := os.Getenv("OCU_AUDIT_PRIVATE_KEY"); keyHex != "" {
 		privKey, err := audit.LoadPrivateKeyFromHex(keyHex)
 		if err != nil {
@@ -109,7 +110,7 @@ func main() {
 		if logPath == "" {
 			logPath = filepath.Join(filepath.Dir(cfg.VaultPath), "audit.log")
 		}
-		immutableLog, err := audit.NewImmutableLoggerWithKey(logPath, privKey)
+		immutableLog, err = audit.NewImmutableLoggerWithKey(logPath, privKey)
 		if err != nil {
 			log.Fatalf("[FATAL] Failed to open audit log at %s: %v", logPath, err)
 		}
@@ -162,6 +163,9 @@ func main() {
 	handler, err := proxy.NewHandler(eng, vaultProvider, masterKey, cfg.TargetURL)
 	if err != nil {
 		log.Fatalf("[FATAL] %v", err)
+	}
+	if immutableLog != nil {
+		handler.SetAuditLogger(immutableLog)
 	}
 
 	addr := ":" + cfg.Port

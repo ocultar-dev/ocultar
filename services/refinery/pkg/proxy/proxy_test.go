@@ -6,9 +6,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/ocultar-dev/ocultar/pkg/audit"
 	"github.com/ocultar-dev/ocultar/pkg/config"
 	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/pkg/proxy"
@@ -149,6 +152,47 @@ func TestProxyRehydratesResponseTokens(t *testing.T) {
 		t.Errorf("🚨 Email NOT re-hydrated in client response!\nClient body: %s", clientStr)
 	} else {
 		t.Logf("✅ Email re-hydrated in client response: %s", clientStr)
+	}
+}
+
+// TestProxyLogsRequestOutcomeToAudit verifies ServeHTTP logs a top-level
+// PROXY_REQUEST outcome to the immutable audit log when one is wired via
+// SetAuditLogger — apps/sombra already logged per-request outcomes
+// (AI_ROUTING/PROXY_CHAT_COMPLETION); the proxy previously logged none.
+func TestProxyLogsRequestOutcomeToAudit(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	defer upstream.Close()
+
+	handler, _, _ := setupTestStack(t, upstream.URL)
+
+	logPath := filepath.Join(t.TempDir(), "audit.log")
+	auditor, err := audit.NewImmutableLogger(logPath)
+	if err != nil {
+		t.Fatalf("create audit logger: %v", err)
+	}
+	t.Cleanup(func() { auditor.Close() })
+	handler.SetAuditLogger(auditor)
+
+	proxyServer := httptest.NewServer(handler)
+	defer proxyServer.Close()
+
+	resp, err := http.Post(proxyServer.URL+"/v1/chat/completions", "application/json", strings.NewReader(`{"messages":[]}`))
+	if err != nil {
+		t.Fatalf("proxy request failed: %v", err)
+	}
+	resp.Body.Close()
+	auditor.Close()
+
+	logBytes, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read audit log: %v", err)
+	}
+	logStr := string(logBytes)
+	if !strings.Contains(logStr, "PROXY_REQUEST") || !strings.Contains(logStr, "SUCCESS") {
+		t.Errorf("expected a PROXY_REQUEST SUCCESS audit entry, got log contents:\n%s", logStr)
 	}
 }
 

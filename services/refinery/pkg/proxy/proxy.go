@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ocultar-dev/ocultar/pkg/audit"
 	"github.com/ocultar-dev/ocultar/pkg/config"
 	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
@@ -37,6 +38,27 @@ type Handler struct {
 	transport http.RoundTripper
 	sem       chan struct{}
 	waitQueue chan struct{}
+	auditor   *audit.ImmutableLogger
+}
+
+// SetAuditLogger wires an immutable audit logger for per-request outcome
+// logging (action "PROXY_REQUEST"). Optional — if never called, ServeHTTP
+// skips audit logging entirely, matching the prior behavior. Per-PII-match
+// audit entries (the refinery's own "matched"/"vaulted" chokepoint) are
+// unaffected either way; this only adds the top-level request outcome that
+// apps/sombra already logs but apps/proxy did not.
+func (h *Handler) SetAuditLogger(l *audit.ImmutableLogger) {
+	h.auditor = l
+}
+
+// logAudit is a nil-safe wrapper so call sites don't need to guard every call.
+func (h *Handler) logAudit(actor, action, resource, status, detail string) {
+	if h.auditor == nil {
+		return
+	}
+	if err := h.auditor.Log(actor, action, resource, status, detail); err != nil {
+		log.Printf("[WARN] audit write failed: %v", err)
+	}
 }
 
 // NewHandler constructs a Handler pointed at the given upstream targetURL.
@@ -143,9 +165,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		RequestsTotal.WithLabelValues(r.Method, "error", "false").Inc()
 		if strings.Contains(err.Error(), "trial limit reached") {
 			FailClosedTotal.WithLabelValues("trial_limit").Inc()
+			h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", "trial limit reached")
 			http.Error(w, "ocultar-proxy: trial limit reached (fail-closed)", http.StatusForbidden)
 		} else {
 			FailClosedTotal.WithLabelValues("slm_unavailable").Inc()
+			h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", "refinery failure (fail-closed)")
 			http.Error(w, "ocultar-proxy: internal security refinery failure (fail-closed)", http.StatusInternalServerError)
 		}
 		return
@@ -154,6 +178,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ── 3. Construct the upstream request ────────────────────────────────────
 	upstreamURL, err := h.resolveTarget(r)
 	if err != nil {
+		h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", fmt.Sprintf("target resolution blocked: %v", err))
 		http.Error(w, fmt.Sprintf("ocultar-proxy: %v", err), http.StatusForbidden)
 		return
 	}
@@ -174,6 +199,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.transport.RoundTrip(upstreamReq)
 	if err != nil {
 		log.Printf("[PROXY] upstream error: %v", err)
+		h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", "upstream error")
 		http.Error(w, fmt.Sprintf("ocultar-proxy: upstream error: %v", err), http.StatusBadGateway)
 		return
 	}
@@ -193,6 +219,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("[PROXY] re-hydration failed: %v", err)
+		h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", "re-hydration error")
 		if config.Global.RehydrateFallbackEnabled {
 			log.Printf("[WARN] Re-hydration failed, falling back to tokenized response (Safety: ON)")
 			finalBody = respBody // Return tokens instead of leaking data or failing
@@ -215,6 +242,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	redactedStr := fmt.Sprintf("%v", redacted)
 	RequestsTotal.WithLabelValues(r.Method, statusStr, redactedStr).Inc()
 	RequestLatency.WithLabelValues("total").Observe(time.Since(start).Seconds())
+	if err == nil {
+		h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "SUCCESS", fmt.Sprintf("method=%s status=%d redacted=%v", r.Method, resp.StatusCode, redacted))
+	}
 }
 
 func (h *Handler) redactBody(body []byte, actor string) ([]byte, bool, error) {
