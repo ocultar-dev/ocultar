@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -33,7 +34,10 @@ func main() {
 	http.HandleFunc("/api/status", handleStatus)
 
 	fmt.Println("OCULTAR Production Mock API running on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		slog.Error("server failed", "error", err)
+		os.Exit(1)
+	}
 }
 
 func handleROI(w http.ResponseWriter, r *http.Request) {
