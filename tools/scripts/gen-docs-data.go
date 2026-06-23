@@ -6,7 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +45,7 @@ func main() {
 	for _, p := range paths {
 		structs, err := parsePackage(p)
 		if err != nil {
-			log.Printf("[WARN] Failed to parse %s: %v", p, err)
+			slog.Warn("failed to parse package", "path", p, "error", err)
 			continue
 		}
 		manifest.Structs = append(manifest.Structs, structs...)
@@ -59,7 +59,8 @@ func main() {
 	data, _ := json.MarshalIndent(manifest, "", "  ")
 	err := os.WriteFile(outFile, data, 0644)
 	if err != nil {
-		log.Fatalf("Failed to write manifest: %v", err)
+		slog.Error("failed to write manifest", "error", err)
+		os.Exit(1)
 	}
 
 	fmt.Printf("Successfully generated doc manifest at %s (%d structs)\n", outFile, len(manifest.Structs))
