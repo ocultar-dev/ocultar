@@ -1,7 +1,7 @@
 package refinery
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 )
 
@@ -14,7 +14,7 @@ func tier11PhoneShield(e *Refinery, refined, actor string) (string, error) {
 	}
 	var phoneErr error
 	refined, phoneErr = parseAndReplaceWithErr(refined, ParseAndReplacePhonesRaw, func(match string, start, end int) (string, error) {
-		log.Printf("[DEBUG] Tier 1.1 Phone hit: %s", match)
+		slog.Debug("tier 1.1 phone hit", "type", "PHONE", "length", len(match))
 		return e.getOrSetSecureTokenLoc(match, "PHONE", "phone", start, end, actor)
 	})
 	if phoneErr != nil {

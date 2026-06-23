@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
+	"log/slog"
 	"regexp"
 
 	"github.com/ocultar-dev/ocultar/internal/pii"
@@ -60,7 +60,7 @@ func (e *Refinery) getOrSetSecureResult(res pii.DetectionResult, actor string) (
 	// registered variants of a known identity.
 	if entityRegistryTypes[res.Entity] {
 		if canonicalToken, found := e.Vault.LookupVariant(res.Value); found {
-			log.Printf("[INFO] Entity registry hit: %q → %s", res.Value, canonicalToken)
+			slog.Info("entity registry hit", "entity_type", res.Entity, "token", canonicalToken)
 			return canonicalToken, nil
 		}
 	}

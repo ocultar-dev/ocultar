@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/url"
 	"strings"
 	"sync"
@@ -169,7 +169,7 @@ func (e *Refinery) SetDomainScanner(domain string, s AIScanner) {
 		e.DomainScanners = make(map[string]AIScanner)
 	}
 	e.DomainScanners[domain] = s
-	log.Printf("[INFO] Domain Tier 2 scanner registered: '%s'", domain)
+	slog.Info("domain Tier 2 scanner registered", "domain", domain)
 }
 
 // activeScanner returns the scanner for the currently configured domain,
@@ -276,11 +276,11 @@ func (e *Refinery) ProcessInterface(data interface{}, actor string) (interface{}
 					if e.FailClosedOnSLMError {
 						return nil, fmt.Errorf("SLM inference failed: %w", slmErr)
 					}
-					log.Printf("[WARN] Tier 2 SLM unavailable, degrading to Tier 1: %v", slmErr)
+					slog.Warn("Tier 2 SLM unavailable, degrading to Tier 1", "error", slmErr)
 					preScanMap = nil
 				}
 				if len(preScanMap) > 0 {
-					log.Printf("[INFO] SLM Batch Scan: %d entity type(s) detected in record", len(preScanMap))
+					slog.Info("SLM batch scan complete", "entity_types", len(preScanMap))
 				}
 			}
 		}

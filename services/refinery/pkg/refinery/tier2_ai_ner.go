@@ -2,7 +2,7 @@ package refinery
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 )
 
@@ -69,7 +69,7 @@ func tier2AINer(e *Refinery, refined, actor string, preScanMap map[string][]stri
 			if e.FailClosedOnSLMError {
 				return "", fmt.Errorf("SLM inference failed: %w", slmErr)
 			}
-			log.Printf("[WARN] Tier 2 SLM unavailable, degrading to Tier 1: %v", slmErr)
+			slog.Warn("Tier 2 SLM unavailable, degrading to Tier 1", "error", slmErr)
 			piiMap = nil
 		}
 		for piiType, items := range piiMap {
@@ -87,10 +87,10 @@ func tier2AINer(e *Refinery, refined, actor string, preScanMap map[string][]stri
 					continue
 				}
 				if isBlockedSLMLabel(trimmed) {
-					log.Printf("[DEBUG] Tier 2 SLM: skipping blocked label %q", trimmed)
+					slog.Debug("Tier 2 SLM: skipping blocked label", "length", len(trimmed))
 					continue
 				}
-				log.Printf("[DEBUG] Tier 2 SLM hit: %s (%s)", trimmed, canonType)
+				slog.Debug("Tier 2 SLM hit", "entity_type", canonType, "length", len(trimmed))
 				refined, err = e.applyReplacement(refined, trimmed, canonType, "ai-ner", actor)
 				if err != nil {
 					return "", err

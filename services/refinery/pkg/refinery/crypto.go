@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 
 	"github.com/ocultar-dev/ocultar/vault"
 )
@@ -85,7 +85,7 @@ func DecryptToken(v vault.Provider, masterKey []byte, token string) (string, err
 		}
 		plaintext, err := Decrypt(encryptedPII, masterKey)
 		if err != nil {
-			log.Printf("[ERROR] decrypt error for token %s (key rotation?). Fail-safe: returning unhydrated token: %v", token, err)
+			slog.Error("decrypt error, fail-safe returning unhydrated token (key rotation?)", "token", token, "error", err)
 			return token, nil
 		}
 		return string(plaintext), nil

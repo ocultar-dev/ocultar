@@ -2,7 +2,7 @@ package refinery
 
 import (
 	"encoding/base64"
-	"log"
+	"log/slog"
 	"regexp"
 	"strings"
 
@@ -44,7 +44,7 @@ func (e *Refinery) applyReplacement(line, target, piiType, source string, actor 
 
 	re, err := regexp.Compile("(?i)" + regexp.QuoteMeta(target))
 	if err != nil {
-		log.Printf("[WARN] applyReplacement: skipping invalid pattern for %q: %v", target, err)
+		slog.Warn("applyReplacement: skipping invalid pattern", "length", len(target), "error", err)
 		return line, nil
 	}
 
@@ -99,7 +99,7 @@ func (e *Refinery) applyReplacementProtected(line, target, piiType, source strin
 
 	re, err := regexp.Compile("(?i)" + regexp.QuoteMeta(target))
 	if err != nil {
-		log.Printf("[WARN] applyReplacementProtected: skipping invalid pattern for %q: %v", target, err)
+		slog.Warn("applyReplacementProtected: skipping invalid pattern", "length", len(target), "error", err)
 		return line, nil
 	}
 

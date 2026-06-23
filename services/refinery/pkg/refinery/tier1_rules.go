@@ -1,7 +1,7 @@
 package refinery
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/ocultar-dev/ocultar/internal/pii"
 	"github.com/ocultar-dev/ocultar/pkg/config"
@@ -18,7 +18,7 @@ func tier1RuleEngine(e *Refinery, refined, actor string) (string, error) {
 
 	// Scan first to identify structured PII (SSN, Credit Cards, etc.)
 	detections := eng.Scan(refined)
-	log.Printf("[DEBUG] Tier 1 Scan found %d detections", len(detections))
+	slog.Debug("tier 1 scan complete", "detections", len(detections))
 
 	tokens := tokenPattern.FindAllStringIndex(refined, -1)
 	refined, err := eng.Redact(refined, func(d pii.DetectionResult) (string, error) {
