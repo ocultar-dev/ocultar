@@ -51,7 +51,6 @@ func (n NoopAIScanner) IsAvailable() bool                                   { re
 func (n NoopAIScanner) SetDomain(domain string)                             {}
 func (n NoopAIScanner) CircuitStateName() string                            { return "closed" }
 
-
 // DryRunReport collects PII hit metadata when running in --dry-run or --report mode.
 type DryRunReport struct {
 	Mode       string                `json:"mode"`
@@ -65,12 +64,12 @@ type DryRunReport struct {
 // The storage backend is fully abstracted behind vault.Provider; the refinery
 // has no knowledge of DuckDB, PostgreSQL, or any other concrete implementation.
 type Refinery struct {
-	Vault        vault.Provider
-	MasterKey    []byte
-	HmacKey      []byte
-	DryRun       bool
-	Report       bool
-	Serve        string
+	Vault     vault.Provider
+	MasterKey []byte
+	HmacKey   []byte
+	DryRun    bool
+	Report    bool
+	Serve     string
 	// SkipDeepScan disables Tier 2 AI scanning for this instance without removing the scanner.
 	// Useful for high-throughput batch jobs where speed takes priority over AI recall.
 	SkipDeepScan bool
@@ -83,9 +82,9 @@ type Refinery struct {
 	// Defaults to false at the struct level so the /api/refine preview endpoint stays
 	// responsive even when the SLM sidecar is not running.
 	FailClosedOnSLMError bool
-	VaultCount   *atomic.Int64
-	AuditLogger  AuditLogger
-	AIScanner    AIScanner
+	VaultCount           *atomic.Int64
+	AuditLogger          AuditLogger
+	AIScanner            AIScanner
 
 	// DomainScanners holds optional per-domain scanners registered via SetDomainScanner.
 	// The active scanner is selected at call time using config.Global.DomainSnapshot.
@@ -291,25 +290,25 @@ func (e *Refinery) processInterfaceRecursive(data interface{}, actor string, pre
 		// Attempt Base64 decoding — skip short strings (≤8 chars) which are
 		// almost always false positives (e.g. "No" decodes to "6", "Various" etc.).
 		if len(val) > 8 {
-		if decodedBytes, err := decodeBase64(val); err == nil && len(decodedBytes) > 0 {
-			// Try to treat decoded Base64 as JSON or string
-			var unmarshaled interface{}
-			if err := json.Unmarshal(decodedBytes, &unmarshaled); err == nil {
-				mod, err := e.processInterfaceRecursive(unmarshaled, actor, preScanMap)
+			if decodedBytes, err := decodeBase64(val); err == nil && len(decodedBytes) > 0 {
+				// Try to treat decoded Base64 as JSON or string
+				var unmarshaled interface{}
+				if err := json.Unmarshal(decodedBytes, &unmarshaled); err == nil {
+					mod, err := e.processInterfaceRecursive(unmarshaled, actor, preScanMap)
+					if err != nil {
+						return nil, err
+					}
+					if remarshed, err := json.Marshal(mod); err == nil {
+						return base64.StdEncoding.EncodeToString(remarshed), nil
+					}
+				}
+				// Fallback: treat decoded Base64 as pure string
+				refinedStr, err := e.RefineString(string(decodedBytes), actor, preScanMap)
 				if err != nil {
 					return nil, err
 				}
-				if remarshed, err := json.Marshal(mod); err == nil {
-					return base64.StdEncoding.EncodeToString(remarshed), nil
-				}
+				return base64.StdEncoding.EncodeToString([]byte(refinedStr)), nil
 			}
-			// Fallback: treat decoded Base64 as pure string
-			refinedStr, err := e.RefineString(string(decodedBytes), actor, preScanMap)
-			if err != nil {
-				return nil, err
-			}
-			return base64.StdEncoding.EncodeToString([]byte(refinedStr)), nil
-		}
 		}
 
 		// Attempt URL decoding
@@ -399,8 +398,15 @@ func (e *Refinery) processInterfaceRecursive(data interface{}, actor string, pre
 	}
 }
 
-// RefineString is the core logic that orchestrates PII detection tiers (Regex, Dictionaries, SLM) on a single string.
-// Security is mandatory: Tier 2 (AI) is always prioritized if available.
+// RefineString is the core logic that orchestrates PII detection tiers
+// (Regex, Dictionaries, SLM) on a single string.
+//
+// TIER ORDER IS LOAD-BEARING. Each tier assumes the side effects of the
+// tiers before it (e.g. Tier 1 must run before Tier 1.1 so digits already
+// claimed by SSNs/IDs aren't re-claimed as phone numbers; Tier 2.5 must run
+// immediately after Tier 2 because it cleans up artifacts Tier 2 itself
+// produces). Do not reorder these calls without re-running the full
+// per-tier regression corpus in refinery_regression_test.go.
 func (e *Refinery) RefineString(input string, actor string, preScanMap map[string][]string) (string, error) {
 	if len(input) < 3 {
 		return input, nil
@@ -477,5 +483,3 @@ func (e *Refinery) RefineString(input string, actor string, preScanMap map[strin
 
 	return refined, nil
 }
-
-
