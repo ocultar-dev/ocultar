@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -246,7 +246,7 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 
 	aiResponse, err := g.router.Send(ctx, modelName, messages, opts)
 	if err != nil {
-		log.Printf("[ERROR] HandleQuery router.Send failed: %v", err)
+		slog.Error("HandleQuery router.Send failed", "error", err)
 		http.Error(w, "ai model request failed", http.StatusBadGateway)
 		return
 	}

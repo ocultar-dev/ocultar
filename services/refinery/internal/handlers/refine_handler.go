@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -46,7 +46,7 @@ func (h *Handler) HandleRefine(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(inputData, &jsonRaw); err == nil {
 		refinedData, err := h.Eng.ProcessInterface(jsonRaw, actor)
 		if err != nil {
-			log.Printf("Refinery error: %v", err)
+			slog.Error("refinery error", "error", err)
 			http.Error(w, "Ocultar Refinery: internal refinery error", http.StatusInternalServerError)
 			return
 		}
@@ -61,7 +61,7 @@ func (h *Handler) HandleRefine(w http.ResponseWriter, r *http.Request) {
 			}
 			refined, err := h.Eng.RefineString(line, actor, nil)
 			if err != nil {
-				log.Printf("Refinery error: %v", err)
+				slog.Error("refinery error", "error", err)
 				http.Error(w, "Ocultar Refinery: internal refinery error", http.StatusInternalServerError)
 				return
 			}
@@ -125,7 +125,7 @@ func (h *Handler) HandleRefineFile(w http.ResponseWriter, r *http.Request) {
 		}
 		refinedData, err := h.Eng.ProcessInterface(data, actor)
 		if err != nil {
-			log.Printf("Refinery error JSON: %v", err)
+			slog.Error("refinery error (json)", "error", err)
 			http.Error(w, "Ocultar Refinery: internal refinery error", http.StatusInternalServerError)
 			return
 		}
@@ -146,7 +146,7 @@ func (h *Handler) HandleRefineFile(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			if err != nil {
-				log.Printf("Error reading CSV record: %v", err)
+				slog.Error("error reading CSV record", "error", err)
 				continue
 			}
 
@@ -157,7 +157,7 @@ func (h *Handler) HandleRefineFile(w http.ResponseWriter, r *http.Request) {
 				} else {
 					refined, err := h.Eng.RefineString(field, actor, nil)
 					if err != nil {
-						log.Printf("Refinery error CSV: %v", err)
+						slog.Error("refinery error (csv)", "error", err)
 						http.Error(w, "Ocultar Refinery: internal refinery error", http.StatusInternalServerError)
 						return
 					}
@@ -185,7 +185,7 @@ func (h *Handler) HandleRefineFile(w http.ResponseWriter, r *http.Request) {
 		}
 		refined, err := h.Eng.RefineString(line, actor, nil)
 		if err != nil {
-			log.Printf("Refinery error JSONL: %v", err)
+			slog.Error("refinery error (jsonl)", "error", err)
 			http.Error(w, "Ocultar Refinery: internal refinery error", http.StatusInternalServerError)
 			return
 		}
@@ -197,6 +197,6 @@ func (h *Handler) HandleRefineFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Printf("Error scanning file: %v", err)
+		slog.Error("error scanning file", "error", err)
 	}
 }

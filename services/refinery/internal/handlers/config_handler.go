@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/ocultar-dev/ocultar/pkg/config"
@@ -44,7 +44,7 @@ func (h *Handler) HandleConfigRegex(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := config.Save(); err != nil {
-			log.Printf("[CONFIG] failed to persist regex rule: %v", err)
+			slog.Error("config: failed to persist regex rule", "error", err)
 		}
 		h.Eng.AuditLogger.Log("admin", "ADD_REGEX", "SUCCESS", rule.Type)
 		w.WriteHeader(http.StatusCreated)
@@ -55,7 +55,7 @@ func (h *Handler) HandleConfigRegex(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(&payload); err == nil {
 			config.RemoveRegexRule(payload.Type)
 			if err := config.Save(); err != nil {
-				log.Printf("[CONFIG] failed to persist regex deletion: %v", err)
+				slog.Error("config: failed to persist regex deletion", "error", err)
 			}
 			h.Eng.AuditLogger.Log("admin", "DEL_REGEX", "SUCCESS", payload.Type)
 		}
@@ -95,7 +95,7 @@ func (h *Handler) HandleConfigDictionary(w http.ResponseWriter, r *http.Request)
 		if err := json.NewDecoder(r.Body).Decode(&payload); err == nil {
 			config.AddDictionaryTerm(payload.Type, payload.Term)
 			if err := config.Save(); err != nil {
-				log.Printf("[CONFIG] failed to persist dictionary term: %v", err)
+				slog.Error("config: failed to persist dictionary term", "error", err)
 			}
 			h.Eng.AuditLogger.Log("admin", "ADD_DICT", "SUCCESS", payload.Type)
 			w.WriteHeader(http.StatusCreated)
@@ -133,7 +133,7 @@ func (h *Handler) HandleConfigSystem(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(&payload); err == nil {
 			config.UpdateSystemLimits(payload.MaxConcurrency, payload.QueueSize)
 			if err := config.Save(); err != nil {
-				log.Printf("[CONFIG] failed to persist system limits: %v", err)
+				slog.Error("config: failed to persist system limits", "error", err)
 			}
 			h.Eng.AuditLogger.Log("admin", "UPDATE_SYSTEM_LIMITS", "SUCCESS", "Configured Limits")
 			w.WriteHeader(http.StatusOK)

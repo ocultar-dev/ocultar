@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -48,7 +48,7 @@ func (g *Gateway) HandleSlackEvent(w http.ResponseWriter, r *http.Request) {
 	// Verify Slack request signature before processing any payload.
 	signingSecret := os.Getenv("SLACK_SIGNING_SECRET")
 	if signingSecret == "" {
-		log.Printf("[ERROR] SLACK_SIGNING_SECRET not configured — rejecting Slack event")
+		slog.Error("SLACK_SIGNING_SECRET not configured, rejecting Slack event")
 		http.Error(w, "slack signing secret not configured", http.StatusInternalServerError)
 		return
 	}
@@ -112,14 +112,14 @@ func (g *Gateway) processSlackMessageAsynchronously(ctx context.Context, payload
 	actor := fmt.Sprintf("slack-user-%s", payload.Event.User)
 	slackToken := os.Getenv("SLACK_BOT_TOKEN")
 	if slackToken == "" {
-		log.Printf("[ERROR] SLACK_BOT_TOKEN not configured.")
+		slog.Error("SLACK_BOT_TOKEN not configured")
 		return
 	}
 
 	// 2. Fail-Closed Redaction (Outbound from Slack to LLM)
 	refinedPrompt, err := g.eng.RefineString(payload.Event.Text, actor, nil)
 	if err != nil {
-		log.Printf("[ERROR] Refinery failed to process Slack message: %v", err)
+		slog.Error("refinery failed to process Slack message", "error", err)
 		g.sendSlackMessage(ctx, slackToken, payload.Event.Channel, "⚠️ *Security Block*: Ocultar blocked this message due to a processing failure.")
 		return
 	}
@@ -137,7 +137,7 @@ func (g *Gateway) processSlackMessageAsynchronously(ctx context.Context, payload
 
 	aiRespString, err := g.router.Send(ctx, modelName, msg, router.ModelOpts{})
 	if err != nil {
-		log.Printf("[ERROR] AI Routing failed: %v", err)
+		slog.Error("AI routing failed", "error", err)
 		g.sendSlackMessage(ctx, slackToken, payload.Event.Channel, "⚠️ *Gateway Error*: Upstream AI provider failed.")
 		return
 	}
@@ -148,7 +148,7 @@ func (g *Gateway) processSlackMessageAsynchronously(ctx context.Context, payload
 		g.auditor.Log(actor, "SLACK_QUERY", modelName, "FAILED", "Re-hydration error")
 	}
 	if err != nil {
-		log.Printf("[ERROR] Re-hydration failed: %v", err)
+		slog.Error("re-hydration failed", "error", err)
 		g.sendSlackMessage(ctx, slackToken, payload.Event.Channel, "⚠️ *Security Block*: Re-hydration error. Data cannot be securely returned.")
 		return
 	}
@@ -171,12 +171,12 @@ func (g *Gateway) sendSlackMessage(ctx context.Context, token, channel, text str
 
 	bodyData, err := json.Marshal(reqBody)
 	if err != nil {
-		log.Printf("[ERROR] Failed to marshal Slack message body: %v", err)
+		slog.Error("failed to marshal Slack message body", "error", err)
 		return
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, slackAPI, bytes.NewReader(bodyData))
 	if err != nil {
-		log.Printf("[ERROR] Failed to build Slack API request: %v", err)
+		slog.Error("failed to build Slack API request", "error", err)
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -184,12 +184,12 @@ func (g *Gateway) sendSlackMessage(ctx context.Context, token, channel, text str
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("[ERROR] Failed to send slack message: %v", err)
+		slog.Error("failed to send Slack message", "error", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] Slack API returned %d", resp.StatusCode)
+		slog.Error("Slack API returned non-OK status", "status", resp.StatusCode)
 	}
 }
