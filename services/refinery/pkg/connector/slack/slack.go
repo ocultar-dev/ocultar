@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -44,7 +44,7 @@ func (s *SlackConnector) Init(config map[string]interface{}, eng *refinery.Refin
 }
 
 func (s *SlackConnector) Start() error {
-	log.Printf("[INFO] Slack Connector %q initialized (on-demand pull mode).", s.id)
+	slog.Info("slack connector initialized (on-demand pull mode)", "id", s.id)
 	return nil
 }
 
@@ -73,7 +73,7 @@ func (s *SlackConnector) Fetch(ctx context.Context, params map[string]interface{
 
 	url := fmt.Sprintf("https://slack.com/api/conversations.history?channel=%s&limit=20", channelID)
 
-	log.Printf("[INFO] Slack Connector %q pulling history for channel %s...", s.id, channelID)
+	slog.Info("slack connector pulling history", "id", s.id, "channel_id", channelID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

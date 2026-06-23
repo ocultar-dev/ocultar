@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -239,7 +239,9 @@ func (s *QwenScanner) ScanForPII(text string) (map[string][]string, error) {
 
 	var entities []qwenEntity
 	if err := json.Unmarshal([]byte(content), &entities); err != nil {
-		log.Printf("[WARN] qwen: JSON parse failed: %v. Raw: %s", err, content)
+		// Deliberately not logging the raw response: it's the model's PII-extraction
+		// output and may directly contain detected entity values.
+		slog.Warn("qwen: JSON parse failed", "error", err, "response_length", len(content))
 		s.recordQwenFailure()
 		return result, fmt.Errorf("qwen: parse entity array: %w", err)
 	}
@@ -351,9 +353,9 @@ func (s *QwenScanner) recordQwenSuccess() {
 }
 
 func (s *QwenScanner) transitionQwenTo(next circuitState) {
-	log.Printf("[CIRCUIT-BREAKER] Tier 2 Qwen: %s → %s (failures=%d, successes=%d)",
-		circuitStateName(s.state), circuitStateName(next),
-		s.consecutiveFailures, s.consecutiveSuccesses)
+	slog.Info("circuit breaker: Tier 2 Qwen state transition",
+		"from", circuitStateName(s.state), "to", circuitStateName(next),
+		"failures", s.consecutiveFailures, "successes", s.consecutiveSuccesses)
 	s.state = next
 	s.lastStateChange = time.Now()
 	s.consecutiveFailures = 0

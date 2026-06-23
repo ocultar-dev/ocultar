@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -62,13 +62,13 @@ func (s *SharePointConnector) Init(config map[string]interface{}, eng *refinery.
 }
 
 func (s *SharePointConnector) Start() error {
-	log.Printf("[SHAREPOINT-GRAPH] Starting connector %s", s.id)
+	slog.Info("sharepoint-graph: starting connector", "id", s.id)
 	go s.run()
 	return nil
 }
 
 func (s *SharePointConnector) Stop() error {
-	log.Printf("[SHAREPOINT-GRAPH] Stopping connector %s", s.id)
+	slog.Info("sharepoint-graph: stopping connector", "id", s.id)
 	close(s.stop)
 	return nil
 }
@@ -102,7 +102,7 @@ func (s *SharePointConnector) Fetch(ctx context.Context, params map[string]inter
 		}
 		text, err := s.client.DownloadText(ctx, siteID, item.ID, item.Name)
 		if err != nil {
-			log.Printf("[SHAREPOINT-GRAPH] Skipping %s: %v", item.Name, err)
+			slog.Warn("sharepoint-graph: skipping file", "name", item.Name, "error", err)
 			continue
 		}
 		docs = append(docs, document{
@@ -137,11 +137,11 @@ func (s *SharePointConnector) poll() {
 		return
 	}
 
-	log.Printf("[SHAREPOINT-GRAPH] Polling site %s (delta: %v)...", s.siteID, s.deltaLink != "")
+	slog.Info("sharepoint-graph: polling site", "site_id", s.siteID, "delta", s.deltaLink != "")
 
 	items, nextDelta, err := s.client.ListFiles(ctx, s.siteID)
 	if err != nil {
-		log.Printf("[SHAREPOINT-GRAPH] Poll error: %v", err)
+		slog.Error("sharepoint-graph: poll error", "error", err)
 		return
 	}
 	s.deltaLink = nextDelta
@@ -152,7 +152,7 @@ func (s *SharePointConnector) poll() {
 		}
 		text, err := s.client.DownloadText(ctx, s.siteID, item.ID, item.Name)
 		if err != nil {
-			log.Printf("[SHAREPOINT-GRAPH] Download error for %s: %v", item.Name, err)
+			slog.Warn("sharepoint-graph: download error", "name", item.Name, "error", err)
 			continue
 		}
 
@@ -163,10 +163,10 @@ func (s *SharePointConnector) poll() {
 		}
 		refined, err := s.refinery.ProcessInterface(doc, "sharepoint-graph-connector")
 		if err != nil {
-			log.Printf("[SHAREPOINT-GRAPH] Refinery error for %s: %v", item.Name, err)
+			slog.Warn("sharepoint-graph: refinery error", "name", item.Name, "error", err)
 			continue
 		}
-		log.Printf("[SHAREPOINT-REFINERY] Processed %s. PII neutralized.", item.Name)
+		slog.Info("sharepoint-graph: processed file, PII neutralized", "name", item.Name)
 		_ = refined
 	}
 }
@@ -261,7 +261,7 @@ func (c *GraphClient) Authenticate() error {
 
 	c.token = result.AccessToken
 	c.tokenExpiry = time.Now().Add(time.Duration(result.ExpiresIn) * time.Second)
-	log.Printf("[GRAPH-API] Token refreshed, valid until %s", c.tokenExpiry.Format(time.RFC3339))
+	slog.Info("graph-api: token refreshed", "valid_until", c.tokenExpiry.Format(time.RFC3339))
 	return nil
 }
 

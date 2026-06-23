@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -83,7 +83,7 @@ func NewRemoteScanner(sidecarURL string) (*RemoteScanner, error) {
 		if os.Getenv("OCU_ALLOW_REMOTE_SLM") != "true" {
 			return nil, fmt.Errorf("SLM_SIDECAR_URL %q is not a loopback address — OCULTAR's zero-egress guarantee requires Tier 2 AI NER to run on this host. Set OCU_ALLOW_REMOTE_SLM=true to override (only if you understand that raw, un-redacted text will be sent off-host before redaction)", sidecarURL)
 		}
-		log.Printf("[WARN] SLM_SIDECAR_URL %q is non-local and OCU_ALLOW_REMOTE_SLM=true — Tier 2 AI NER will send raw text off-host before PII redaction completes.", sidecarURL)
+		slog.Warn("SLM_SIDECAR_URL is non-local and OCU_ALLOW_REMOTE_SLM=true — Tier 2 AI NER will send raw text off-host before PII redaction completes", "sidecar_url", sidecarURL)
 	}
 	transport := &http.Transport{
 		MaxIdleConns:        50,
@@ -246,9 +246,9 @@ func (s *RemoteScanner) recordSuccess() {
 // transitionTo changes state and logs the transition. Caller must hold mu.
 // Always clears probeInFlight so the next allow() starts clean.
 func (s *RemoteScanner) transitionTo(next circuitState) {
-	log.Printf("[CIRCUIT-BREAKER] Tier 2 SLM (remote): %s → %s (failures=%d, successes=%d)",
-		circuitStateName(s.state), circuitStateName(next),
-		s.consecutiveFailures, s.consecutiveSuccesses)
+	slog.Info("circuit breaker: Tier 2 SLM (remote) state transition",
+		"from", circuitStateName(s.state), "to", circuitStateName(next),
+		"failures", s.consecutiveFailures, "successes", s.consecutiveSuccesses)
 	s.state = next
 	s.lastStateChange = time.Now()
 	s.consecutiveFailures = 0

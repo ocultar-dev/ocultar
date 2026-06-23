@@ -2,7 +2,7 @@ package connector
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"plugin"
 	"sync"
 
@@ -78,7 +78,7 @@ func (m *Manager) LoadAndStart(id string, connectorType string, config map[strin
 	}
 
 	m.connectors[id] = c
-	log.Printf("[INFO] Connector %q (%s) started matching 'Zero Egress' policy.", id, connectorType)
+	slog.Info("connector started, matching zero-egress policy", "id", id, "type", connectorType)
 	return nil
 }
 
@@ -88,9 +88,9 @@ func (m *Manager) StopAll() {
 	defer m.mutex.Unlock()
 
 	for id, c := range m.connectors {
-		log.Printf("[INFO] Stopping connector %q...", id)
+		slog.Info("stopping connector", "id", id)
 		if err := c.Stop(); err != nil {
-			log.Printf("[ERROR] Failed to stop connector %q: %v", id, err)
+			slog.Error("failed to stop connector", "id", id, "error", err)
 		}
 		delete(m.connectors, id)
 	}
@@ -122,6 +122,6 @@ func (m *Manager) LoadPlugin(path string) error {
 	registry[c.Type()] = factory
 	registryMutex.Unlock()
 
-	log.Printf("[INFO] Loaded connector plugin from %q (Type: %s)", path, c.Type())
+	slog.Info("loaded connector plugin", "path", path, "type", c.Type())
 	return nil
 }

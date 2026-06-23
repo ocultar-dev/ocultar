@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,7 +47,7 @@ func (h *EventWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.verifySignature(r, body); err != nil {
-		log.Printf("[SLACK-WEBHOOK] Signature verification failed: %v", err)
+		slog.Warn("slack-webhook: signature verification failed", "error", err)
 		http.Error(w, "invalid signature", http.StatusUnauthorized)
 		return
 	}
@@ -89,7 +89,7 @@ func (h *EventWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		go h.processMessage(ev.Channel, ev.User, ev.Ts, ev.Text)
 
 	default:
-		log.Printf("[SLACK-WEBHOOK] Unhandled event type %q", envelope.Type)
+		slog.Info("slack-webhook: unhandled event type", "type", envelope.Type)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -98,11 +98,11 @@ func (h *EventWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *EventWebhook) processMessage(channel, user, ts, text string) {
 	refined, err := h.refinery.RefineString(text, "slack-events/"+channel, nil)
 	if err != nil {
-		log.Printf("[SLACK-WEBHOOK] Refinery error for channel %s ts %s: %v", channel, ts, err)
+		slog.Warn("slack-webhook: refinery error", "channel", channel, "ts", ts, "error", err)
 		return
 	}
-	log.Printf("[SLACK-WEBHOOK] channel=%s user=%s ts=%s original_len=%d refined_len=%d",
-		channel, user, ts, len(text), len(refined))
+	slog.Info("slack-webhook: message processed",
+		"channel", channel, "user", user, "ts", ts, "original_len", len(text), "refined_len", len(refined))
 	// refined is the sanitized text — forward to downstream here.
 	_ = refined
 }
