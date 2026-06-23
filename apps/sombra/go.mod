@@ -8,10 +8,13 @@ replace github.com/ocultar-dev/ocultar/vault => ../../services/vault
 
 replace github.com/ocultar-dev/ocultar/internal/pii => ../../internal/pii
 
+replace github.com/ocultar-dev/ocultar/pkg/gateway => ../../pkg/gateway
+
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/ocultar-dev/ocultar v0.0.0-00010101000000-000000000000
 	github.com/ocultar-dev/ocultar/internal/pii v0.0.0-00010101000000-000000000000
+	github.com/ocultar-dev/ocultar/pkg/gateway v0.0.0-00010101000000-000000000000
 	github.com/ocultar-dev/ocultar/vault v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.23.2
 	golang.org/x/crypto v0.53.0

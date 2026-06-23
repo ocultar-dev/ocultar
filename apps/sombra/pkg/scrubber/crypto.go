@@ -11,7 +11,7 @@ import (
 
 // encrypt encrypts plaintext with AES-256-GCM using key and returns a
 // hex-encoded ciphertext+nonce string — identical to OCULTAR refinery.Encrypt
-// so vault entries are compatible with proxy.RehydrateString.
+// so vault entries are compatible with refinery.RehydrateString.
 func encrypt(plaintext, key []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

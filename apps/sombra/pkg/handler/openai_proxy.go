@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/metrics"
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/router"
 	"github.com/ocultar-dev/ocultar/pkg/config"
-	"github.com/ocultar-dev/ocultar/pkg/proxy"
 )
 
 // OpenAIChatCompletionRequest is the standard OpenAI /v1/chat/completions request shape.
@@ -109,18 +107,16 @@ func (g *Gateway) HandleV1ChatCompletions(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	rehydrated, err := proxy.RehydrateString(g.vault, g.masterKey, aiResp)
-	if err != nil {
+	rehydrated, degraded, err := g.gateway.RehydrateString(aiResp)
+	if degraded {
 		metrics.RehydrationFailuresTotal.WithLabelValues("chat_completions").Inc()
 		if g.auditor != nil {
 			g.auditor.Log(actor, "PROXY_CHAT_COMPLETION", req.Model, "FAILED", "rehydration error")
 		}
-		if !config.Global.RehydrateFallbackEnabled {
-			http.Error(w, fmt.Sprintf("rehydration failed: %v", err), http.StatusInternalServerError)
-			return
-		}
-		log.Printf("[WARN] Re-hydration failed, falling back to tokenized response (Safety: ON)")
-		rehydrated = aiResp // Return tokens instead of leaking data or failing
+	}
+	if err != nil {
+		http.Error(w, fmt.Sprintf("rehydration failed: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	if g.auditor != nil {

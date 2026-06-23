@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/router"
-	"github.com/ocultar-dev/ocultar/pkg/proxy"
 )
 
 type SlackEventPayload struct {
@@ -144,7 +143,10 @@ func (g *Gateway) processSlackMessageAsynchronously(ctx context.Context, payload
 	}
 
 	// 4. Security Re-Hydration (Inbound from LLM to Slack)
-	rehydratedResponse, err := proxy.RehydrateString(g.vault, g.masterKey, aiRespString)
+	rehydratedResponse, degraded, err := g.gateway.RehydrateString(aiRespString)
+	if degraded && g.auditor != nil {
+		g.auditor.Log(actor, "SLACK_QUERY", modelName, "FAILED", "Re-hydration error")
+	}
 	if err != nil {
 		log.Printf("[ERROR] Re-hydration failed: %v", err)
 		g.sendSlackMessage(ctx, slackToken, payload.Event.Channel, "⚠️ *Security Block*: Re-hydration error. Data cannot be securely returned.")

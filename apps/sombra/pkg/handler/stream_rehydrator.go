@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ocultar-dev/ocultar/pkg/proxy"
+	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
 )
 
@@ -88,7 +88,7 @@ func (r *StreamRehydrator) Push(delta string) (string, error) {
 	if r.vault == nil {
 		return safe, nil // test/noop mode
 	}
-	return proxy.RehydrateString(r.vault, r.masterKey, safe)
+	return refinery.RehydrateString(r.vault, r.masterKey, safe)
 }
 
 // Flush drains any remaining buffer at end-of-stream.
@@ -101,5 +101,5 @@ func (r *StreamRehydrator) Flush() (string, error) {
 	if r.vault == nil {
 		return remaining, nil // test/noop mode
 	}
-	return proxy.RehydrateString(r.vault, r.masterKey, remaining)
+	return refinery.RehydrateString(r.vault, r.masterKey, remaining)
 }

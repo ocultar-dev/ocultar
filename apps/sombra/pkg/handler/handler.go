@@ -17,7 +17,7 @@ import (
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/scrubber"
 	"github.com/ocultar-dev/ocultar/pkg/audit"
 	"github.com/ocultar-dev/ocultar/pkg/config"
-	"github.com/ocultar-dev/ocultar/pkg/proxy"
+	"github.com/ocultar-dev/ocultar/pkg/gateway"
 	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
 	"github.com/golang-jwt/jwt/v5"
@@ -46,6 +46,7 @@ type Gateway struct {
 	masterKey  []byte
 	auditor    *audit.ImmutableLogger
 	scrubber   *scrubber.Scrubber
+	gateway    *gateway.Service
 }
 
 // NewGateway creates a new Sombra gateway.
@@ -62,6 +63,7 @@ func NewGateway(eng *refinery.Refinery, v vault.Provider, masterKey []byte, r *r
 		masterKey:  masterKey,
 		auditor:    auditor,
 		scrubber:   sc,
+		gateway:    gateway.New(eng, v, masterKey),
 	}, nil
 }
 
@@ -193,7 +195,7 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 		err = json.Unmarshal([]byte(prescrubbedData), &jsonData)
 		if err == nil {
 			var processed interface{}
-			processed, err = g.eng.ProcessInterface(jsonData, fetchReq.Actor)
+			processed, err = g.gateway.RedactInterface(jsonData, fetchReq.Actor)
 			if err != nil {
 				metrics.FailClosedTotal.WithLabelValues("redaction_data").Inc()
 				http.Error(w, fmt.Sprintf("structured redaction failed: %v", err), http.StatusInternalServerError)
@@ -208,10 +210,10 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 			redactedData = string(redactedBytes)
 		} else {
 			// Fallback to string-based redaction if JSON is malformed
-			redactedData, err = g.eng.RefineString(prescrubbedData, fetchReq.Actor, nil)
+			redactedData, err = g.gateway.RedactString(prescrubbedData, fetchReq.Actor)
 		}
 	} else {
-		redactedData, err = g.eng.RefineString(prescrubbedData, fetchReq.Actor, nil)
+		redactedData, err = g.gateway.RedactString(prescrubbedData, fetchReq.Actor)
 	}
 
 	if err != nil {
@@ -220,7 +222,7 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redactedPrompt, err := g.eng.RefineString(prompt, fetchReq.Actor, nil)
+	redactedPrompt, err := g.gateway.RedactString(prompt, fetchReq.Actor)
 	if err != nil {
 		metrics.FailClosedTotal.WithLabelValues("redaction_prompt").Inc()
 		http.Error(w, fmt.Sprintf("redaction refinery failed (prompt): %v", err), http.StatusInternalServerError)
@@ -250,18 +252,16 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5. Re-hydrate the tokens in the AI's response using the vault.
-	rehydratedResponse, err := proxy.RehydrateString(g.vault, g.masterKey, aiResponse)
-	if err != nil {
+	rehydratedResponse, degraded, err := g.gateway.RehydrateString(aiResponse)
+	if degraded {
 		metrics.RehydrationFailuresTotal.WithLabelValues("query").Inc()
 		if g.auditor != nil {
 			g.auditor.Log(actor, "AI_ROUTING", modelName, "FAILED", "Re-hydration error")
 		}
-		if !config.Global.RehydrateFallbackEnabled {
-			http.Error(w, fmt.Sprintf("re-hydration failed: %v", err), http.StatusInternalServerError)
-			return
-		}
-		log.Printf("[WARN] Re-hydration failed, falling back to tokenized response (Safety: ON)")
-		rehydratedResponse = aiResponse // Return tokens instead of leaking data or failing
+	}
+	if err != nil {
+		http.Error(w, fmt.Sprintf("re-hydration failed: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	if g.auditor != nil {
@@ -275,7 +275,7 @@ func (g *Gateway) HandleQuery(w http.ResponseWriter, r *http.Request) {
 		"metadata": map[string]interface{}{
 			"model":            modelName,
 			"connector":        connName,
-			"pii_was_redacted": proxy.ContainsTokens(redactedData) || proxy.ContainsTokens(redactedPrompt),
+			"pii_was_redacted": refinery.ContainsTokens(redactedData) || refinery.ContainsTokens(redactedPrompt),
 		},
 	}
 
