@@ -1,10 +1,9 @@
-package proxy
+package refinery
 
 import (
 	"regexp"
 	"strings"
 
-	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
 )
 
@@ -15,10 +14,14 @@ var tokenRe = regexp.MustCompile(`\[[A-Z_]+_[0-9a-f]{16}\]`)
 // RehydrateString scans s for vault tokens and replaces each with the
 // original PII recovered from the vault. Tokens not found in the vault
 // are left unchanged (safe fallback — they simply stay as redacted stubs).
+//
+// Lives here (not in pkg/proxy, where it originated) because it's a pure
+// vault/crypto primitive built directly on DecryptToken, used by both
+// apps/proxy and apps/sombra — pkg/gateway.Service wraps this for both.
 func RehydrateString(v vault.Provider, masterKey []byte, s string) (string, error) {
 	var firstErr error
 	out := tokenRe.ReplaceAllStringFunc(s, func(tok string) string {
-		plain, err := refinery.DecryptToken(v, masterKey, tok)
+		plain, err := DecryptToken(v, masterKey, tok)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err

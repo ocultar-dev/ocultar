@@ -16,6 +16,7 @@ import (
 
 	"github.com/ocultar-dev/ocultar/pkg/audit"
 	"github.com/ocultar-dev/ocultar/pkg/config"
+	"github.com/ocultar-dev/ocultar/pkg/gateway"
 	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
 )
@@ -39,6 +40,7 @@ type Handler struct {
 	sem       chan struct{}
 	waitQueue chan struct{}
 	auditor   *audit.ImmutableLogger
+	gateway   *gateway.Service
 }
 
 // SetAuditLogger wires an immutable audit logger for per-request outcome
@@ -88,6 +90,7 @@ func NewHandler(eng *refinery.Refinery, v vault.Provider, masterKey []byte, targ
 		vault:     v,
 		masterKey: masterKey,
 		target:    u,
+		gateway:   gateway.New(eng, v, masterKey),
 		transport: &http.Transport{
 			DisableCompression: true,
 			DialContext: (&net.Dialer{
@@ -213,20 +216,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ── 6. Re-hydrate tokens in response ─────────────────────────────────────
+	// The RehydrateFallbackEnabled decision lives in gateway.Service now —
+	// err here is non-nil only when fallback is disabled and rehydration
+	// truly failed; degraded is true whenever rehydration errored, even if
+	// fallback let the request continue with the still-tokenized body.
 	rehyStart := time.Now()
-	finalBody, err := h.rehydrateBody(respBody, resp.Header.Get("Content-Type"))
+	finalBody, degraded, err := h.rehydrateBody(respBody, resp.Header.Get("Content-Type"))
 	RequestLatency.WithLabelValues("rehydration").Observe(time.Since(rehyStart).Seconds())
 
-	if err != nil {
+	if degraded {
 		log.Printf("[PROXY] re-hydration failed: %v", err)
 		h.logAudit(actor, "PROXY_REQUEST", r.URL.Path, "FAILED", "re-hydration error")
-		if config.Global.RehydrateFallbackEnabled {
-			log.Printf("[WARN] Re-hydration failed, falling back to tokenized response (Safety: ON)")
-			finalBody = respBody // Return tokens instead of leaking data or failing
-		} else {
-			http.Error(w, "ocultar-proxy: re-hydration failed (strict data loss protection)", http.StatusInternalServerError)
-			return
-		}
+	}
+	if err != nil {
+		http.Error(w, "ocultar-proxy: re-hydration failed (strict data loss protection)", http.StatusInternalServerError)
+		return
 	}
 
 	// ── 7. Write response back to the client ──────────────────────────────────
@@ -277,7 +281,7 @@ func (h *Handler) redactBody(body []byte, actor string) ([]byte, bool, error) {
 	lines := strings.Split(string(body), "\n")
 	for i, line := range lines {
 		if strings.TrimSpace(line) != "" {
-			refined, refErr := h.eng.RefineString(line, actor, nil)
+			refined, refErr := h.gateway.RedactString(line, actor)
 			if refErr != nil {
 				return nil, false, refErr
 			}
@@ -288,9 +292,14 @@ func (h *Handler) redactBody(body []byte, actor string) ([]byte, bool, error) {
 	return []byte(strings.Join(lines, "\n")), report.TotalCount > 0, nil
 }
 
-func (h *Handler) rehydrateBody(body []byte, contentType string) ([]byte, error) {
-	if len(body) == 0 || !ContainsTokensInBody(body) {
-		return body, nil
+// rehydrateBody resolves vault tokens in body back to plaintext. degraded is
+// true whenever the underlying rehydration encountered an error — even if
+// config.Global.RehydrateFallbackEnabled let the request continue with the
+// still-tokenized body instead of failing — so ServeHTTP can still audit-log
+// the failure distinctly from a clean success.
+func (h *Handler) rehydrateBody(body []byte, contentType string) ([]byte, bool, error) {
+	if len(body) == 0 || !refinery.ContainsTokensInBody(body) {
+		return body, false, nil
 	}
 
 	isJSON := strings.Contains(contentType, "application/json") ||
@@ -302,16 +311,16 @@ func (h *Handler) rehydrateBody(body []byte, contentType string) ([]byte, error)
 		var outBuf bytes.Buffer
 		if err := streamRehydrateJSON(dec, h.vault, h.masterKey, &outBuf); err == nil {
 			if _, err := dec.Token(); err == io.EOF {
-				return outBuf.Bytes(), nil
+				return outBuf.Bytes(), false, nil
 			}
 		}
 	}
 
-	res, err := RehydrateString(h.vault, h.masterKey, string(body))
+	res, degraded, err := h.gateway.RehydrateString(string(body))
 	if err != nil {
-		return nil, err
+		return nil, degraded, err
 	}
-	return []byte(res), nil
+	return []byte(res), degraded, nil
 }
 
 // resolveTarget builds the full upstream URL from the incoming request.
@@ -521,7 +530,7 @@ func streamRehydrateJSON(dec *json.Decoder, v vault.Provider, masterKey []byte, 
 			out.WriteString(et.(json.Delim).String())
 		}
 	case string:
-		hydrated, err := RehydrateString(v, masterKey, val)
+		hydrated, err := refinery.RehydrateString(v, masterKey, val)
 		if err != nil {
 			return err
 		}

@@ -6,7 +6,6 @@ package gateway
 
 import (
 	"github.com/ocultar-dev/ocultar/pkg/config"
-	"github.com/ocultar-dev/ocultar/pkg/proxy"
 	"github.com/ocultar-dev/ocultar/pkg/refinery"
 	"github.com/ocultar-dev/ocultar/vault"
 )
@@ -53,7 +52,7 @@ func (s *Service) RedactInterface(data interface{}, actor string) (interface{}, 
 // exists so proxy and sombra react identically the moment that changes,
 // rather than silently diverging again.
 func (s *Service) RehydrateString(text string) (out string, degraded bool, err error) {
-	out, rehydrateErr := proxy.RehydrateString(s.Vault, s.MasterKey, text)
+	out, rehydrateErr := refinery.RehydrateString(s.Vault, s.MasterKey, text)
 	if rehydrateErr == nil {
 		return out, false, nil
 	}
@@ -66,7 +65,7 @@ func (s *Service) RehydrateString(text string) (out string, degraded bool, err e
 // RehydrateInterface resolves vault tokens in a decoded JSON structure back
 // to plaintext. See RehydrateString for the fallback semantics.
 func (s *Service) RehydrateInterface(data interface{}) (out interface{}, degraded bool, err error) {
-	out, rehydrateErr := proxy.RehydrateInterface(s.Vault, s.MasterKey, data)
+	out, rehydrateErr := refinery.RehydrateInterface(s.Vault, s.MasterKey, data)
 	if rehydrateErr == nil {
 		return out, false, nil
 	}

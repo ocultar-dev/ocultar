@@ -222,7 +222,7 @@ func TestVaultRehydrateString(t *testing.T) {
 	}
 
 	// Now re-hydrate — we should get the original email back.
-	restored, err := proxy.RehydrateString(v, masterKey, refined)
+	restored, err := refinery.RehydrateString(v, masterKey, refined)
 	if err != nil {
 		t.Fatalf("unexpected re-hydration error: %v", err)
 	}
