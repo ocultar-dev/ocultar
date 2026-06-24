@@ -11,7 +11,10 @@ All endpoints accept and return JSON unless noted otherwise.
 |---|---|
 | `GET /api/health` | None |
 | `POST /api/refine` | None |
+| `POST /api/refine/file` | None |
 | `POST /api/reveal` | Bearer token (`OCU_AUDITOR_TOKEN`) |
+| `POST /api/vault/delete` | Bearer token (`OCU_AUDITOR_TOKEN`) |
+| `POST /api/vault/migrate` | Bearer token (`OCU_AUDITOR_TOKEN`) |
 | `GET /api/entities` | Bearer token (`OCU_AUDITOR_TOKEN`) |
 | `POST /api/entities` | Bearer token (`OCU_AUDITOR_TOKEN`) |
 | `POST /api/entities/seed` | Bearer token (`OCU_AUDITOR_TOKEN`) |
@@ -88,6 +91,16 @@ Detect and mask PII in text or JSON. No authentication required.
 
 ---
 
+## `POST /api/refine/file`
+
+Detect and mask PII within uploaded files (e.g., text, JSON). No authentication required.
+
+**Request body:** `multipart/form-data` with a `file` field. Maximum file size: 10 MB.
+
+**Response `200 OK`:** Same structure as `/api/refine`. The `refined` string contains the masked file contents.
+
+---
+
 ## `POST /api/reveal`
 
 Restore one or more vault tokens back to their original plaintext values.
@@ -123,6 +136,40 @@ Tokens not found in the vault return the string `"ERR_NOT_FOUND"` as their value
 |---|---|
 | `403` | Missing or invalid auditor token |
 | `400` | Malformed request body |
+
+---
+
+## `POST /api/vault/delete`
+
+Permanently delete specific tokens from the vault ahead of their natural TTL.
+
+**Authentication:** `Authorization: Bearer <OCU_AUDITOR_TOKEN>` required.
+
+**Request body:**
+
+```json
+{
+  "tokens": ["[PERSON_3a12b4cd91e7f6a0]"]
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "deleted": 1
+}
+```
+
+---
+
+## `POST /api/vault/migrate`
+
+Migrate the vault database.
+
+**Authentication:** `Authorization: Bearer <OCU_AUDITOR_TOKEN>` required.
+
+**Response `200 OK`:** Returns empty or a status payload on success.
 
 ---
 

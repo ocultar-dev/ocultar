@@ -60,11 +60,12 @@ Returns engine status. No authentication required.
 
 ---
 
-### `POST /api/refine`
+### `POST /api/refine` and `POST /api/refine/file`
 
-Mask PII in text or JSON. No authentication required.
+Mask PII in text, JSON, or uploaded files. No authentication required.
 
-**Request body**: raw text string or any JSON value.
+**`POST /api/refine` Request body**: raw text string or any JSON value.
+**`POST /api/refine/file` Request body**: `multipart/form-data` with a `file` field (max 10MB).
 
 **Response**:
 
@@ -149,6 +150,7 @@ privacy-filter protocol (default).
 
 - **Zero-egress design.** Masked tokens (`[EMAIL_9c8f7a1b2d3e4f50]`, …) are the only data forwarded to the upstream model. Raw text is not transmitted.
 - **Local vault only.** The mapping of each token back to its original value is stored in an encrypted DuckDB vault (`vault.db`) on the local filesystem using AES-256-GCM with HKDF-SHA256. The vault file is never transmitted.
+- **Data retention.** Enforces GDPR Art. 5(1)(e) storage limitation by automatically purging expired vault tokens (default TTL: 90 days) via a background retention sweep.
 - **Token mapping retention.** Each detected PII value is encrypted and stored in the vault keyed by its token (e.g. `[EMAIL_9c8f7a1b2d3e4f50]` → ciphertext). The refinery does not store the raw, unmasked prompt as a whole — only the individual token-to-plaintext mappings. `/api/reveal` decrypts mappings for tokens it's given; it does not reconstruct or diff the original prompt. If reveal access is not desired, do not configure `OCU_AUDITOR_TOKEN` — without an auditor token the endpoint returns `403`.
 - **Fail-closed design.** If the refinery encounters an error or is unavailable, the gateway returns a `5xx` error and stops — it does not forward raw text as a fallback.
 

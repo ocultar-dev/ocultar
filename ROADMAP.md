@@ -46,7 +46,7 @@ Initial public release.
 
 - [ ] Cursor / Windsurf MCP connector
 - [ ] Structured error codes in API responses (machine-readable failure reasons)
-- [ ] `golangci-lint` pass across all modules
+- [x] `golangci-lint` pass across all modules
 
 ---
 

@@ -38,7 +38,7 @@ Two adapter protocols are supported:
 - `privacy-filter` (default) — compatible with [openai/privacy-filter](https://huggingface.co/openai/privacy-filter) models
 - `openai-chat` — compatible with llama.cpp, Qwen, and any OpenAI-protocol endpoint
 
-If the Tier 2 sidecar is unavailable or times out, the circuit breaker opens and Ocultar continues with Tier 1 only — it does not block the request.
+If the Tier 2 sidecar is unavailable or times out, the circuit breaker opens. By default, **Ocultar blocks the request** (fail-closed) because Tier 1 alone cannot guarantee complete detection for complex entities before they reach a third-party model. You must explicitly set `OCU_SOMBRA_ALLOW_DEGRADED_NER=true` to allow it to continue with Tier 1 only during an outage.
 
 ---
 
@@ -95,9 +95,9 @@ Events logged:
 services/refinery/   — PII detection engine and HTTP server
 internal/pii/        — Entity registry, regex patterns, validators
 services/vault/      — DuckDB vault: encrypt, store, retrieve
-apps/sombra/         — Zero-egress gateway (Sombra)
-apps/proxy/          — Lightweight HTTP proxy layer
-pkg/gateway/         — Shared gateway interfaces
+apps/sombra/         — Zero-egress gateway (Sombra) (powered by pkg/gateway)
+apps/proxy/          — Lightweight HTTP proxy layer (powered by pkg/gateway)
+pkg/gateway/         — Shared gateway core with unified redact/rehydrate logic
 ```
 
 `services/refinery` is the entry point for the standalone binary (`./ocultar -serve 4141`).
