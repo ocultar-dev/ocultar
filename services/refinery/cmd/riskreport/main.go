@@ -41,7 +41,7 @@ func fatalf(msg string, args ...any) {
 }
 
 const reportVersion = "3.1"
-const engineVersion = "v1.14"
+const engineVersion = "v1.15.0"
 
 // reportMeta holds non-risk metadata for the report header.
 type reportMeta struct {

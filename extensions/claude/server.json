@@ -6,12 +6,12 @@
     "url": "https://github.com/Edu963/ocultar",
     "source": "github"
   },
-  "version": "0.1.2",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "ocultar-claude-mcp",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       },
@@ -36,8 +36,8 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/Edu963/ocultar/releases/download/v0.1.2-claude-mcp/ocultar-pii-0.1.0.mcpb",
-      "version": "0.1.0",
+      "identifier": "https://github.com/Edu963/ocultar/releases/download/v0.2.0-claude-mcp/ocultar-pii-0.2.0.mcpb",
+      "version": "0.2.0",
       "fileSha256": "b4428298230fdc4ba9122fd1aac1987d14a2a04875ff0b18a33e1e1ef7cfe2aa",
       "transport": {
         "type": "stdio"

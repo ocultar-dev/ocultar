@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-06-26
+
+### Added
+- **HMAC-SHA256 Tokenization**: Upgraded deterministic tokens from 8 to 16 characters for enhanced security.
+- **File Processing API**: New `/api/refine/file` endpoint for bulk data masking.
+- **Vault Management**: New `/api/vault/delete` and `/api/vault/migrate` endpoints.
+- **GDPR Data Retention Loop**: Implemented 90-day TTL for sensitive data.
+- **Decompression Bomb Protection**: Added safeguards for OOXML/docx file processing.
+- **Structured Logging**: Migrated to `log/slog` for unified structured logs.
+- **Unified Gateway Logic**: Consolidated gateway logic across Proxy and Sombra.
+- **Degraded NER Opt-out**: Introduced `OCU_SOMBRA_ALLOW_DEGRADED_NER` fail-closed configuration.
+- **MCP Extensions**: Updated Claude, Goose, and Mistral MCP extensions to `v0.2.0` with 16-char token compatibility.
+
 ## [1.14.0] - 2026-06-09 — Initial public release
 
 ### Added
@@ -20,4 +33,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Shield Manager Dashboard**: React-based UI for live redaction testing and system monitoring.
 
 ---
+[1.15.0]: https://github.com/ocultar-dev/ocultar/releases/tag/v1.15.0
 [1.14.0]: https://github.com/ocultar-dev/ocultar/releases/tag/v1.14.0

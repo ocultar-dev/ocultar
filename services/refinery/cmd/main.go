@@ -29,7 +29,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-const VERSION = "1.14"
+const VERSION = "1.15.0"
 
 const defaultSalt = "ocultar-v112-kdf-salt-fixed-16"
 var startTime = time.Now()
