@@ -12,7 +12,6 @@ replace github.com/ocultar-dev/ocultar/pkg/gateway => ../../pkg/gateway
 
 require (
 	github.com/ocultar-dev/ocultar v0.0.0-00010101000000-000000000000
-	github.com/ocultar-dev/ocultar/pkg/gateway v0.0.0-00010101000000-000000000000
 	github.com/ocultar-dev/ocultar/vault v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.23.2
 	golang.org/x/crypto v0.53.0
@@ -34,6 +33,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nyaruka/phonenumbers v1.8.0 // indirect
 	github.com/ocultar-dev/ocultar/internal/pii v0.0.0-00010101000000-000000000000 // indirect
+	github.com/ocultar-dev/ocultar/pkg/gateway v0.0.0-00010101000000-000000000000 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect

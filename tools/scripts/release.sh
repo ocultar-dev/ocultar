@@ -23,9 +23,18 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 # 3. Build Components
-for TARGET in "${BUILD_TARGETS[@]}"; do
-    NAME=$(basename "$TARGET")
-    echo "🏗️ Building $NAME..."
+BUILD_MAP=(
+    "apps/proxy:proxy"
+    "services/refinery/cmd:refinery"
+    "services/refinery/cmd/riskreport:riskreport"
+    "apps/sombra:sombra"
+    "apps/slm-engine:slm-engine"
+)
+
+for ENTRY in "${BUILD_MAP[@]}"; do
+    TARGET="${ENTRY%%:*}"
+    NAME="${ENTRY##*:}"
+    echo "🏗️ Building $NAME from $TARGET..."
     CGO_ENABLED=1 go build -o "$DIST_DIR/$NAME" "./$TARGET"
 done
 

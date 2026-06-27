@@ -23,8 +23,8 @@ OCULTAR_URL = os.environ.get("OCULTAR_URL", "http://localhost:4141").rstrip("/")
 OCULTAR_API_KEY = os.environ.get("OCULTAR_API_KEY", "")
 OCULTAR_AUDITOR_TOKEN = os.environ.get("OCULTAR_AUDITOR_TOKEN", "")
 
-# Matches tokens like [EMAIL_9c8f7a1b] produced by the Ocultar tokenizer
-_TOKEN_RE = re.compile(r"\[([A-Z_]+)_([a-f0-9]{8})\]")
+# Matches tokens like [EMAIL_9c8f7a1b2d3e4f50] produced by the Ocultar tokenizer
+_TOKEN_RE = re.compile(r"\[([A-Z_]+)_([a-f0-9]{8,16}|\d+)\]")
 
 app = Server("ocultar-pii")
 
