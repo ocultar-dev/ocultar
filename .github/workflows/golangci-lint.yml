@@ -19,7 +19,7 @@ jobs:
       - name: Install C compiler
         run: sudo apt-get install -y gcc
 
-      - uses: golangci/golangci-lint-action@v9.2.1
+      - uses: golangci/golangci-lint-action@v9.3.0
         with:
           args: --timeout=5m ./apps/proxy/... ./apps/slm-engine/... ./apps/sombra/... ./internal/pii/... ./pkg/gateway/... ./services/refinery/... ./services/vault/...
           version: v1.64.8
