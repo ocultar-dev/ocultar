@@ -26,7 +26,7 @@ func (h *Handler) HandlePilotUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
-	err := r.ParseMultipartForm(10 << 20) // 10MB limit
+	err := r.ParseMultipartForm(10 << 20) //nolint:gosec // G120: body already bounded via http.MaxBytesReader above
 	if err != nil {
 		http.Error(w, "File too large", http.StatusBadRequest)
 		return
@@ -212,7 +212,7 @@ func (h *Handler) HandlePilotAssessment(w http.ResponseWriter, r *http.Request) 
 
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
 		r.Body = http.MaxBytesReader(w, r.Body, 100*1024)
-		r.ParseMultipartForm(100 * 1024) //nolint:errcheck // 100KB limit; FormValue handles missing fields gracefully
+		r.ParseMultipartForm(100 * 1024) //nolint:gosec,errcheck // G120: body already bounded via http.MaxBytesReader above; FormValue handles missing fields gracefully
 		email = r.FormValue("email")
 		company = r.FormValue("company")
 		file, _, err := r.FormFile("dataset")
