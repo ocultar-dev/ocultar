@@ -11,6 +11,8 @@ jobs:
   publish:
     name: Publish ${{ matrix.package }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -36,3 +38,8 @@ jobs:
       - name: Build ${{ matrix.package }}
         working-directory: ${{ matrix.dir }}
         run: python -m build
+
+      - name: Publish ${{ matrix.package }} to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          packages-dir: ${{ matrix.dir }}/dist
