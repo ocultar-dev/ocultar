@@ -12,6 +12,7 @@ jobs:
     name: Publish ${{ matrix.package }}
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       id-token: write
     strategy:
       fail-fast: false
@@ -32,6 +33,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify version matches tag
+        working-directory: ${{ matrix.dir }}
+        run: |
+          tag_version="${GITHUB_REF_NAME#mcp-v}"
+          pkg_version=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          [ "$tag_version" = "$pkg_version" ] || { echo "::error::tag $tag_version != ${{ matrix.package }} $pkg_version"; exit 1; }
+
       - name: Install build tool
         run: python -m pip install --upgrade build
 
@@ -40,6 +48,6 @@ jobs:
         run: python -m build
 
       - name: Publish ${{ matrix.package }} to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: ${{ matrix.dir }}/dist
