@@ -13,7 +13,7 @@
 - Trigger tag pattern is `mcp-v*.*.*` — must NOT overlap with the existing `v*.*.*` pattern used by `.github/workflows/release.yml` for Go binaries (per spec `docs/superpowers/specs/2026-08-16-mcp-pypi-publish-design.md`).
 - All three packages are versioned in lockstep — the workflow builds and publishes all three matrix legs on every trigger, regardless of which package's code actually changed.
 - No `PYPI_API_TOKEN` or any other PyPI secret is stored in the repo — publishing must use Trusted Publishing (OIDC), which requires top-level job `permissions: id-token: write`.
-- `actions/checkout` is pinned to `v7.0.0` elsewhere in this repo's workflows (`.github/workflows/release.yml`, `docker-publish.yml`) — match that pin for consistency; Dependabot (`.github/dependabot.yml`, `github-actions` ecosystem, directory `/`) already watches and bumps action versions repo-wide, so no new Dependabot config is needed for this file.
+- `actions/checkout` is pinned to `v7.0.1` repo-wide as of this writing (every file under `.github/workflows/`) — match that pin for consistency; Dependabot (`.github/dependabot.yml`, `github-actions` ecosystem, directory `/`) already watches and bumps action versions repo-wide, so no new Dependabot config is needed for this file.
 - This plan covers only the workflow file. It does NOT cover: requesting the `ocultar` PyPI Organization, transferring project ownership, or configuring the PyPI Trusted Publisher form for each project — those are manual pypi.org steps tracked in the spec's Part A and are hard prerequisites for the *first* tag push to succeed, but are not blocked by this plan and don't block it either.
 
 ---
@@ -68,7 +68,7 @@ jobs:
             dir: extensions/mistral
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@v7.0.0
@@ -144,7 +144,7 @@ jobs:
             dir: extensions/mistral
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@v7.0.0
