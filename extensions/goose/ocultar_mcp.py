@@ -17,6 +17,8 @@ from mcp.server import Server
 
 OCULTAR_URL = os.environ.get("OCULTAR_URL", "http://localhost:4141").rstrip("/")
 OCULTAR_API_KEY = os.environ.get("OCULTAR_API_KEY", "")
+OCULTAR_SOMBRA_URL = os.environ.get("OCULTAR_SOMBRA_URL", "http://localhost:8086").rstrip("/")
+OCULTAR_SOMBRA_TOKEN = os.environ.get("OCULTAR_SOMBRA_TOKEN", "")
 
 # Matches tokens like [EMAIL_9c8f7a1b2d3e4f50] produced by the Ocultar tokenizer
 _TOKEN_RE = re.compile(r"\[([A-Z_]+)_([a-f0-9]{8,16}|\d+)\]")
@@ -46,12 +48,46 @@ async def list_tools() -> list[types.Tool]:
                 },
                 "required": ["text"],
             },
-        )
+        ),
+        types.Tool(
+            name="sombra_query",
+            description=(
+                "Send a prompt through the Ocultar Sombra gateway, which redacts "
+                "PII, routes the request to the chosen LLM, and rehydrates the "
+                "response. Requires the Sombra gateway to be running separately "
+                "(`go run ./apps/sombra`, default port 8086) and "
+                "OCULTAR_SOMBRA_TOKEN to be set."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "The question or instruction to send.",
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": (
+                            "Which model to route to, e.g. 'gemini-flash-latest', "
+                            "'gpt-4o', 'gpt-4o-mini', 'mistral-large-latest', "
+                            "'claude-sonnet-4-6'. Passed through to Sombra as-is."
+                        ),
+                    },
+                    "connector": {
+                        "type": "string",
+                        "description": "Data connector to use. Defaults to 'file'.",
+                    },
+                },
+                "required": ["prompt", "model"],
+            },
+        ),
     ]
 
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+    if name == "sombra_query":
+        return await _sombra_query(arguments)
     if name != "refine_text":
         raise ValueError(f"Unknown tool: {name}")
 
@@ -77,7 +113,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             f"Cannot connect to Ocultar at {OCULTAR_URL}. "
             "Start the Refinery first: "
             "`docker run --rm -p 4141:4141 -e OCU_MASTER_KEY=<key> -e OCU_SALT=<salt> "
-            "-e OCU_AUDITOR_TOKEN=<token> ghcr.io/edu963/ocultar:latest -serve 4141`. "
+            "-e OCU_AUDITOR_TOKEN=<token> ghcr.io/ocultar-dev/ocultar:latest -serve 4141`. "
             "Raw text withheld — fail-closed."
         )
     except httpx.TimeoutException:
@@ -105,6 +141,53 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         ensure_ascii=False,
     )
     return [types.TextContent(type="text", text=payload)]
+
+
+async def _sombra_query(arguments: dict) -> list[types.TextContent]:
+    prompt = arguments.get("prompt", "")
+    model = arguments.get("model", "")
+    connector = arguments.get("connector", "file")
+    if not prompt or not model:
+        raise RuntimeError("prompt and model are required.")
+
+    if not OCULTAR_SOMBRA_TOKEN:
+        raise RuntimeError(
+            "OCULTAR_SOMBRA_TOKEN is not set. "
+            "The Sombra gateway rejects every request with no Bearer token. "
+            "Set the environment variable to enable this tool."
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{OCULTAR_SOMBRA_URL}/query",
+                data={"connector": connector, "model": model, "prompt": prompt},
+                headers={"Authorization": f"Bearer {OCULTAR_SOMBRA_TOKEN}"},
+            )
+            response.raise_for_status()
+    except httpx.ConnectError:
+        raise RuntimeError(
+            f"Cannot connect to Sombra at {OCULTAR_SOMBRA_URL}/query. "
+            "Start the Sombra gateway first: `go run ./apps/sombra` (default port 8086). "
+            "Raw data withheld to preserve zero-egress guarantee."
+        )
+    except httpx.TimeoutException:
+        raise RuntimeError(
+            f"Sombra /query timed out (60 s) at {OCULTAR_SOMBRA_URL}. "
+            "Raw data withheld to preserve zero-egress guarantee."
+        )
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            raise RuntimeError(
+                "Sombra rejected the request (401 unauthorized). "
+                "Check OCULTAR_SOMBRA_TOKEN is set to a non-empty value."
+            )
+        raise RuntimeError(
+            f"Sombra /query returned HTTP {exc.response.status_code}: "
+            f"{exc.response.text[:300]}"
+        )
+
+    return [types.TextContent(type="text", text=response.text)]
 
 
 async def main() -> None:
