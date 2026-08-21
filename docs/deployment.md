@@ -65,7 +65,7 @@ curl http://localhost:4141/api/health
 Expected response:
 
 ```json
-{ "status": "healthy", "version": "1.14", "vault": { "status": "online" } }
+{ "status": "healthy", "version": "1.15.0", "vault": { "status": "online" } }
 ```
 
 ---
