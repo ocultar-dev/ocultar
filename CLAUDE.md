@@ -36,8 +36,8 @@ make all
 # Start the proxy (default port 8081)
 go run ./apps/proxy
 
-# Start the refinery HTTP server (port 8080)
-go run ./services/refinery/cmd/main.go --serve 8080
+# Start the refinery HTTP server (port 4141)
+go run ./services/refinery/cmd/main.go --serve 4141
 
 # Start the SLM sidecar (local AI NER, port 8085)
 go run ./apps/slm-engine/main.go
@@ -212,7 +212,7 @@ The Entity Registry (`canonical_entities`/`entity_variants`) is exempt from the 
 
 | App | Dev port | API target |
 |---|---|---|
-| `apps/web` | `8080` (Vite) | Refinery HTTP on `8080` (same port — production build served by Go) |
+| `apps/web` | `8080` (Vite, unrelated to the refinery's own port) | Refinery HTTP on `4141` (production build served by Go on the same port) |
 
 ```bash
 # apps/web

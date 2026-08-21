@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/ocultar-dev/ocultar/apps/sombra/pkg/handler"
+	"github.com/ocultar-dev/ocultar/pkg/config"
+	"github.com/ocultar-dev/ocultar/vault"
 )
 
 // splitAtTokenBoundary is tested via the exported behaviour of streamRehydrator.
@@ -75,6 +77,29 @@ func TestSplitAtTokenBoundary_MultipleTokensLastIncomplete(t *testing.T) {
 	safe, hold := handler.SplitAtTokenBoundary("[EMAIL_00fa9b121a2b3c4d] and [PHONE_cc84")
 	if safe != "[EMAIL_00fa9b121a2b3c4d] and " || hold != "[PHONE_cc84" {
 		t.Errorf("got safe=%q hold=%q", safe, hold)
+	}
+}
+
+func TestSplitAtTokenBoundary_CompleteEntityToken(t *testing.T) {
+	// Entity Registry tokens are [TYPE_N] (small decimal id), not a 16-hex hash.
+	safe, hold := handler.SplitAtTokenBoundary("Loop in [PERSON_1] please")
+	if safe != "Loop in [PERSON_1] please" || hold != "" {
+		t.Errorf("complete entity token should be fully safe: safe=%q hold=%q", safe, hold)
+	}
+}
+
+func TestSplitAtTokenBoundary_IncompleteEntityToken(t *testing.T) {
+	safe, hold := handler.SplitAtTokenBoundary("Loop in [PERSON_1")
+	if safe != "Loop in " || hold != "[PERSON_1" {
+		t.Errorf("incomplete entity token should be held: safe=%q hold=%q", safe, hold)
+	}
+}
+
+func TestSplitAtTokenBoundary_BracketDigitsNoTypePrefix(t *testing.T) {
+	// "[1234]" has no TYPE_ prefix — must never be mistaken for a vault token.
+	safe, hold := handler.SplitAtTokenBoundary("See item [1234] below")
+	if safe != "See item [1234] below" || hold != "" {
+		t.Errorf("bracketed digits without a TYPE_ prefix should be safe: safe=%q hold=%q", safe, hold)
 	}
 }
 
@@ -186,5 +211,52 @@ func TestStreamRehydrator_MarkdownNotHeld(t *testing.T) {
 	out, _ := r.Push("Click [here] to continue")
 	if out != "Click [here] to continue" {
 		t.Errorf("markdown brackets should pass through: got %q", out)
+	}
+}
+
+// TestStreamRehydrator_EntityTokenSpanningChunks is a regression test for a
+// real bug: the boundary regexes only recognized the 16-hex-char hash token
+// form, so an Entity Registry token like "[PERSON_1]" fell through both
+// completeToken and incompleteToken, got flushed as ordinary text, and was
+// never handed to RehydrateString — the client would see the raw token
+// literal instead of the canonical name, even across a single chunk let
+// alone one split mid-token.
+func TestStreamRehydrator_EntityTokenSpanningChunks(t *testing.T) {
+	v, err := vault.New(config.Settings{VaultBackend: "duckdb"}, "")
+	if err != nil {
+		t.Fatalf("vault.New: %v", err)
+	}
+	t.Cleanup(func() { v.Close() })
+	config.InitDefaults()
+
+	if _, err := v.RegisterEntity("PERSON", "Marie Curie", []string{"Marie", "Curie"}); err != nil {
+		t.Fatalf("RegisterEntity: %v", err)
+	}
+
+	masterKey := make([]byte, 32)
+	r := handler.NewStreamRehydrator(v, masterKey)
+
+	// Chunk 1: text + start of an entity token.
+	out1, err := r.Push("Loop in [PERSON_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out1 != "Loop in " {
+		t.Errorf("chunk 1: incomplete entity token must be held, got %q", out1)
+	}
+
+	// Chunk 2: closing bracket + tail text — token now complete and must resolve.
+	out2, err := r.Push("] please")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Marie Curie please"
+	if out2 != want {
+		t.Errorf("chunk 2: want %q, got %q", want, out2)
+	}
+
+	tail, _ := r.Flush()
+	if tail != "" {
+		t.Errorf("expected empty flush, got %q", tail)
 	}
 }

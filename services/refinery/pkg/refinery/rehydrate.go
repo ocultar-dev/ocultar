@@ -7,9 +7,11 @@ import (
 	"github.com/ocultar-dev/ocultar/vault"
 )
 
-// tokenRe matches OCULTAR vault tokens of the form [TYPE_hexhash8].
-// Examples: [PERSON_ab3c12ef1234abcd], [EMAIL_00fa9b12cc334455], [PHONE_cc847211ddeeff00]
-var tokenRe = regexp.MustCompile(`\[[A-Z_]+_[0-9a-f]{16}\]`)
+// tokenRe matches OCULTAR vault tokens: the standard hash-based form
+// [TYPE_hexhash16] (e.g. [PERSON_ab3c12ef1234abcd], [EMAIL_00fa9b12cc334455])
+// and the Entity Registry's canonical form [TYPE_N] (e.g. [PERSON_1]), which
+// DecryptToken resolves via the entity registry rather than AES decryption.
+var tokenRe = regexp.MustCompile(`\[[A-Z_]+_(?:[0-9a-f]{16}|[0-9]+)\]`)
 
 // RehydrateString scans s for vault tokens and replaces each with the
 // original PII recovered from the vault. Tokens not found in the vault

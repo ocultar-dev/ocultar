@@ -5,15 +5,20 @@ import (
 	"strings"
 )
 
-var greetingRegex = regexp.MustCompile(`(?m)(?i)(?:Regards|Best|Cheers|Bonjour|Hello|Hi|Dear|Sincerely|Cordialement)[,.-]*\s+([A-ZÀ-Ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ]+){0,2})\b`)
+// The trigger-word alternations below are scoped case-insensitive with (?i:...)
+// rather than a blanket leading (?i) — a global flag would also fold the
+// [A-ZÀ-Ÿ] capitalised-first-letter check in the capture groups, letting any
+// lowercase word after a trigger (e.g. "call me at ...", "call the doctor at
+// ...") match as a fake PERSON name.
+var greetingRegex = regexp.MustCompile(`(?m)(?i:Regards|Best|Cheers|Bonjour|Hello|Hi|Dear|Sincerely|Cordialement)[,.-]*\s+([A-ZÀ-Ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ]+){0,2})\b`)
 
-var nameIntroRegex = regexp.MustCompile(`(?m)(?i)\b(?:my name is|i am|call me|this is)\s+([A-ZÀ-Ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ]+){0,2})\b`)
+var nameIntroRegex = regexp.MustCompile(`(?m)\b(?i:my name is|i am|call me|this is)\s+([A-ZÀ-Ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ]+){0,2})\b`)
 
 // nameInSentenceRegex catches proper names (two+ capitalised words) referenced by
 // interrogative or inquiry verbs: "where does John Galt live", "who is Jane Smith",
 // "tell me about Bob Jones", "contact Sarah Lee". This extends Tier 1.5 name
 // detection beyond self-disclosures to cover third-party name mentions in questions.
-var nameInSentenceRegex = regexp.MustCompile(`(?i)\b(?:where(?:\s+does)?|who(?:\s+is)?|about|contact|find|email|call|meet)\s+([A-ZÀ-Ÿ][a-zà-ÿ\-]{1,20}(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ\-]{1,20}){1,3})\b`)
+var nameInSentenceRegex = regexp.MustCompile(`\b(?i:where(?:\s+does)?|who(?:\s+is)?|about|contact|find|email|call|meet)\s+([A-ZÀ-Ÿ][a-zà-ÿ\-]{1,20}(?:\s+[A-ZÀ-Ÿ][a-zà-ÿ\-]{1,20}){1,3})\b`)
 
 // tier15GreetingShield catches names disclosed via salutations ("Regards, John"),
 // self-introductions ("My name is Jane"), and third-party name mentions in

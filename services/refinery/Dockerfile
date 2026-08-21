@@ -26,6 +26,6 @@ RUN useradd -m -u 1000 -U -s /bin/sh ocultar
 RUN chown -R ocultar:ocultar /app
 USER ocultar
 
-EXPOSE 8080
+EXPOSE 4141
 
-ENTRYPOINT ["/app/ocultar-refinery", "--serve", "8080"]
+ENTRYPOINT ["/app/ocultar-refinery", "--serve", "4141"]
