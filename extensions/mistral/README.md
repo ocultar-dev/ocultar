@@ -11,6 +11,10 @@ Optimised for French and EU compliance: SIRET/SIREN, IBAN, RGPD Article 25, CNIL
 |------|-------------|
 | `refine_text` | Redacts PII / DCP before sending text to Le Chat. Returns clean text + token map. |
 | `reveal_tokens` | De-tokenizes tokens back to plaintext (auditor-only, requires `OCULTAR_AUDITOR_TOKEN`). |
+| `register_entity` | Registers a canonical PII entity and its variants so they resolve to the same token across sessions (auditor-only, requires `OCULTAR_AUDITOR_TOKEN`). |
+| `list_entities` | Lists all registered PII entities (auditor-only, requires `OCULTAR_AUDITOR_TOKEN`). |
+| `seed_entities` | Bulk-registers PII entities, e.g. from a CRM roster (auditor-only, requires `OCULTAR_AUDITOR_TOKEN`). |
+| `sombra_query` | Asks a redacted question via the Ocultar Sombra gateway — redacts PII, routes to the chosen LLM, rehydrates the response (requires `OCULTAR_SOMBRA_TOKEN` and Sombra running separately). |
 
 ## Prerequisites
 
@@ -72,7 +76,9 @@ Or with `uvx` (no prior install required):
 |----------|----------|-------------|
 | `OCULTAR_URL` | Yes | URL of your local Ocultar Refinery (default: `http://localhost:4141`) |
 | `OCULTAR_API_KEY` | No | Bearer token for Refinery auth |
-| `OCULTAR_AUDITOR_TOKEN` | No | Enables `reveal_tokens` — must match `OCU_AUDITOR_TOKEN` on the server |
+| `OCULTAR_AUDITOR_TOKEN` | No | Enables `reveal_tokens`, `register_entity`, `list_entities`, `seed_entities` — must match `OCU_AUDITOR_TOKEN` on the server |
+| `OCULTAR_SOMBRA_URL` | No | URL of your local Ocultar Sombra gateway (default: `http://localhost:8086`) |
+| `OCULTAR_SOMBRA_TOKEN` | No | Enables `sombra_query` — Sombra rejects requests with no Bearer token |
 
 ## Usage
 
@@ -117,4 +123,4 @@ Ocultar ensures that:
 
 ## License
 
-Apache 2.0 — see [LICENSE](../../LICENSE)
+AGPLv3 — see [LICENSE](../../LICENSE). Commercial licensing available for organizations that cannot comply with AGPLv3's source-disclosure requirements — see [COMMERCIAL_LICENSE.md](../../COMMERCIAL_LICENSE.md).
