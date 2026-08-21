@@ -104,7 +104,7 @@ Sends a prompt through Sombra, which redacts PII, routes the request to the chos
 { "prompt": "Summarize the attached invoice", "model": "gemini-flash-latest", "connector": "file" }
 ```
 
-`model` is passed through to Sombra as-is — Sombra's own policy check rejects an unsupported value with a clear error. `connector` defaults to `"file"` if omitted. This version does not support file uploads through the MCP tool; the prompt itself carries the full query context.
+`model` is required — no default — pick from the models your Sombra deployment has configured (e.g. `gemini-flash-latest`, `gpt-4o`); it's passed through to Sombra as-is, and Sombra's own policy check rejects an unsupported value with a clear error. `connector` defaults to `"file"` if omitted. This version does not support file uploads through the MCP tool; the prompt itself carries the full query context.
 
 ---
 
@@ -242,7 +242,7 @@ All three extensions share the same environment variables:
 
 - `refine_text` is safe to expose to any AI session — it only sends text to the local Refinery, which runs on `localhost`. No telemetry, no remote calls.
 - `reveal_tokens` and the Entity Registry tools require `OCULTAR_AUDITOR_TOKEN`. Every call is logged with actor identity, timestamp, and Ed25519 signature in the tamper-proof audit trail.
-- `sombra_query` requires `OCULTAR_SOMBRA_TOKEN` — Sombra rejects any request with no Bearer token.
+- `sombra_query` requires `OCULTAR_SOMBRA_TOKEN` — Sombra rejects any request with no Bearer token. It's also the one tool whose answer contains rehydrated (real) PII by design: Sombra redacts before routing to the external LLM, but returns the fully rehydrated response to this MCP host, since that's the trusted local caller the query was made on behalf of. The redaction guarantee covers what reaches the external LLM, not the answer that comes back here.
 - The Refinery vault uses AES-256-GCM with HKDF-SHA256 key derivation — tokens are useless without the master key.
 - **Fail-closed guarantee:** if the service a tool depends on is unreachable for any reason, that tool returns an MCP error and refuses to forward raw data or vault contents to the caller.
 

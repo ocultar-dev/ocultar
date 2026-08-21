@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.Edu963/ocultar-pii-mistral",
+  "name": "io.github.ocultar-dev/ocultar-pii-mistral",
   "description": "Zero-egress PII redaction for Mistral Le Chat. Runs locally — no data leaves your infrastructure. Optimised for French and EU compliance (RGPD, CNIL, SIRET, IBAN).",
   "repository": {
-    "url": "https://github.com/Edu963/ocultar",
+    "url": "https://github.com/ocultar-dev/ocultar",
     "source": "github"
   },
-  "version": "0.2.0",
+  "version": "0.3.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "ocultar-mistral-mcp",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "transport": {
         "type": "stdio"
       },
@@ -29,7 +29,17 @@
         },
         {
           "name": "OCULTAR_AUDITOR_TOKEN",
-          "description": "Enables reveal_tokens tool. Must match OCU_AUDITOR_TOKEN on the server.",
+          "description": "Enables reveal_tokens, register_entity, list_entities, and seed_entities tools. Must match OCU_AUDITOR_TOKEN on the server.",
+          "required": false
+        },
+        {
+          "name": "OCULTAR_SOMBRA_URL",
+          "description": "URL of the Ocultar Sombra gateway (for sombra_query). Defaults to http://localhost:8086.",
+          "required": false
+        },
+        {
+          "name": "OCULTAR_SOMBRA_TOKEN",
+          "description": "Enables sombra_query tool. Required for that tool; leave blank to disable it.",
           "required": false
         }
       ]
