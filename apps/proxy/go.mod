@@ -31,7 +31,7 @@ require (
 	github.com/lib/pq v1.11.2 // indirect
 	github.com/marcboeker/go-duckdb v1.8.5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nyaruka/phonenumbers v1.8.0 // indirect
+	github.com/nyaruka/phonenumbers v1.8.1 // indirect
 	github.com/ocultar-dev/ocultar/internal/pii v0.0.0-00010101000000-000000000000 // indirect
 	github.com/ocultar-dev/ocultar/pkg/gateway v0.0.0-20260716110046-46d3348239b8 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
