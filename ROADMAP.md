@@ -48,6 +48,11 @@ Initial public release.
 - [ ] Structured error codes in API responses (machine-readable failure reasons)
 - [x] `golangci-lint` pass across all modules
 
+### Marketing & outreach (high priority — starting 2026-08-29)
+
+- [ ] Publish launch/marketing content about OCULTAR across the web (blog posts, dev community launches, socials)
+- [ ] Add a founder/creator bio section to ocultar.dev — portfolio-worthy, discoverable, points back to the maintainer
+
 ---
 
 ## Medium-term (v1.16 – v2.0)
@@ -95,4 +100,4 @@ Initial public release.
 
 ---
 
-*Apache 2.0 — Self-hosting is free and always will be.*
+*AGPLv3 — Self-hosting is free and always will be. Commercial licensing available, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).*
