@@ -128,7 +128,7 @@ async def main():
         "performance_verdict": "OPTIMAL" if overhead < 100 else "DEGRADED" if overhead < 200 else "SHALLOW_BYPASS_RECOMMENDED"
     }
     
-    output_path = "/home/edu/ocultar/reports/improvement/benchmarks.json"
+    output_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "reports", "improvement", "benchmarks.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(report, f, indent=4)
