@@ -189,5 +189,5 @@ CGO_ENABLED=1 go test ./...
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+AGPLv3 — see [LICENSE](LICENSE). Commercial licensing available, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 

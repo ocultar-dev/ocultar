@@ -143,7 +143,7 @@ That is the system.
 
 ---
 
-*Zero-egress architecture. Self-hosted. Apache 2.0. Docker Compose in under five minutes.*
+*Zero-egress architecture. Self-hosted. AGPLv3. Docker Compose in under five minutes.*
 
 ---
 
