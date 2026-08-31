@@ -2,16 +2,55 @@ import { SiteNav } from "@/components/site/SiteNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { useEffect } from "react";
 
+const LINK_CLASS = "text-primary hover:underline underline-offset-4";
+
 const PARAGRAPHS = [
-  "I grew up in Monteverde, Costa Rica — a cloud forest town built around the idea that some things are worth keeping intact, undisturbed, exactly as they are. I left for UT Austin, where I studied Economics and Latin American Studies, and the path since has taken me a long way from that forest. But the instinct it left me with never really left: some things aren't meant to be exposed, extracted, or shipped off somewhere else just because it's convenient.",
-  "Since 2010, I've been developing business for startups — the kind of work where you learn fast what founders actually need versus what they say they need. OCULTAR grew out of that same instinct pointed at a problem I kept running into: teams shipping raw customer data straight into third-party AI models because building it safely felt like too much friction.",
-  "That's the whole premise of OCULTAR — Spanish for to hide, to conceal. It's a zero-egress PII redaction proxy: it sits between you and whatever AI model you're calling, and it makes sure nothing raw — no name, no SSN, no medical record — ever leaves your machine. Deterministic tokenization, an encrypted local vault, fail-closed by design. Fully open source, AGPLv3, because sovereignty over your own data shouldn't come with a subscription.",
+  <>
+    I grew up in Monteverde, Costa Rica, a cloud forest community built around the idea that
+    some things are worth protecting. I left for UT Austin to study Economics and Latin
+    American Studies, then International Business at Grenoble École de Management, at the foot
+    of the Alps.
+  </>,
+  <>
+    I've spent fifteen years selling enterprise software, building Latin America into
+    Bonitasoft's strongest region, and I'm now at{" "}
+    <a href="https://vates.tech" target="_blank" rel="noreferrer" className={LINK_CLASS}>
+      Vates
+    </a>
+    , the French open-source company behind XCP-ng, where we take on VMware. Nights and
+    weekends, I build.
+  </>,
+  <>
+    Ocultar started with a problem I had. I wanted the latest AI model to read my medical
+    records, and I wasn't comfortable handing them over to do it. As I talked the idea through
+    with friends, I kept seeing the same pattern: teams shipping raw customer data into
+    third-party models, not because they wanted to, but because doing it safely was more
+    friction than anyone had time for.
+  </>,
+  <>
+    Ocultar is Spanish for to hide, to conceal. It's a zero-egress PII redaction proxy written
+    in Go that sits between you and whatever model you're calling. Nothing raw ever leaves your
+    machine: no name, no ID number, no medical record. Deterministic tokenization, an encrypted
+    local vault, fail-closed by design. Fully open source under AGPLv3, because data
+    sovereignty shouldn't come with a subscription.
+  </>,
+  <>
+    <a href="https://getki.ai" target="_blank" rel="noreferrer" className={LINK_CLASS}>
+      Ki!
+    </a>{" "}
+    is the same engine as a desktop app, for people who shouldn't need a proxy config to keep
+    their own files private.
+  </>,
+  <>
+    I work in English, Spanish and French. If you're building at the intersection of AI and
+    privacy, or want to break something I've built, get in touch.
+  </>,
 ];
 
 const LINKS = [
+  { label: "Email", href: "mailto:edu@ocultar.dev" },
   { label: "LinkedIn", href: "https://www.linkedin.com/in/eduardo-trejos/" },
   { label: "GitHub", href: "https://github.com/ocultar-dev" },
-  { label: "Email", href: "mailto:edu@ocultar.dev" },
 ];
 
 export default function About() {
@@ -30,11 +69,10 @@ export default function About() {
             About
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-foreground mb-4">
-            Eduardo Trejos
+            Edu Trejos
           </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Founder, OCULTAR &nbsp;·&nbsp; Economics &amp; Latin American Studies, UT Austin
-          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">OCULTAR</p>
+          <p className="text-[15px] font-medium text-foreground">Hola Mundo!</p>
         </div>
 
         {/* Bio */}

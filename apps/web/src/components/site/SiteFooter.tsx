@@ -101,7 +101,7 @@ export const SiteFooter = () => (
           to="/about"
           className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground transition-colors"
         >
-          Built by Eduardo Trejos
+          Built by Edu Trejos
         </Link>
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary/70">
           Zero-egress · Sovereign · Fail-closed
