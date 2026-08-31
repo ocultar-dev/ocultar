@@ -47,6 +47,7 @@ Initial public release.
 - [ ] Cursor / Windsurf MCP connector
 - [ ] Structured error codes in API responses (machine-readable failure reasons)
 - [x] `golangci-lint` pass across all modules
+- [ ] Tighten "Protect Main" ruleset (github.com/ocultar-dev/ocultar/settings/rules/17754757): change org-admin bypass from "Always" to "For pull requests only", and add `lint apps/web` to required status checks alongside `golangci-lint`/`govulncheck` — currently direct pushes to `main` silently bypass PR review and all CI checks
 
 ### Marketing & outreach (high priority — starting 2026-08-29)
 
