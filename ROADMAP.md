@@ -51,7 +51,7 @@ Initial public release.
 ### Marketing & outreach (high priority — starting 2026-08-29)
 
 - [ ] Publish launch/marketing content about OCULTAR across the web (blog posts, dev community launches, socials)
-- [ ] Add a founder/creator bio section to ocultar.dev — portfolio-worthy, discoverable, points back to the maintainer
+- [x] Add a founder/creator bio section to ocultar.dev — portfolio-worthy, discoverable, points back to the maintainer
 
 ---
 
