@@ -177,13 +177,26 @@ func main() {
 
 	// Tier 2 AI NER — endpoint configured via configs/config.yaml (slm_sidecar_url),
 	// defaulting to SLM_SIDECAR_URL/localhost:8085.
-	sidecarURL := config.Global.SLMSidecarURL
-	scanner, err := inference.NewRemoteScanner(sidecarURL)
-	if err != nil {
-		fatalf(err.Error())
+	//
+	// OCU_PILOT_MODE=1 skips Tier 2 entirely: no RemoteScanner is constructed,
+	// so no sidecar is dialed at all (eng.AIScanner stays the NoopAIScanner set
+	// by NewRefinery). This is the documented default for the Compose demo
+	// stack (docker-compose.yml, .env.example) — previously unenforced, which
+	// meant the "quick demo, Tier 1 only, no AI model needed" path still tried
+	// to dial a nonexistent sidecar and crashed on the zero-egress guard.
+	// Any other value (including unset, for bare `go run`/CI use outside
+	// Compose) preserves the prior always-on behavior.
+	if os.Getenv("OCU_PILOT_MODE") == "1" {
+		slog.Info("OCU_PILOT_MODE=1 — Tier 2 AI NER disabled, no SLM sidecar dialed")
+	} else {
+		sidecarURL := config.Global.SLMSidecarURL
+		scanner, err := inference.NewRemoteScanner(sidecarURL)
+		if err != nil {
+			fatalf(err.Error())
+		}
+		eng.SetAIScanner(scanner)
+		slog.Info("Tier 2 AI (remote sidecar) configured", "sidecar_url", sidecarURL)
 	}
-	eng.SetAIScanner(scanner)
-	slog.Info("Tier 2 AI (remote sidecar) configured", "sidecar_url", sidecarURL)
 
 	handler, err := proxy.NewHandler(eng, vaultProvider, masterKey, cfg.TargetURL)
 	if err != nil {
