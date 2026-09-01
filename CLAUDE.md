@@ -36,8 +36,8 @@ make all
 # Start the proxy (default port 8081)
 go run ./apps/proxy
 
-# Start the refinery HTTP server (port 8080)
-go run ./services/refinery/cmd/main.go --serve 8080
+# Start the refinery HTTP server (port 4141)
+go run ./services/refinery/cmd/main.go --serve 4141
 
 # Start the SLM sidecar (local AI NER, port 8085)
 go run ./apps/slm-engine/main.go
@@ -154,7 +154,7 @@ Requests flow through the Refinery pipeline in order:
 | 1.1 | Phone Shield | libphonenumber validation with Luhn-style checksum reduction |
 | 1.2 | Address Shield | Heuristic address parser |
 | 1.5 | Contextual Shield | Interrogative name detection (e.g., "Where does [NAME] live?") and greeting/signature logic |
-| 2 | AI NER | Sends text to SLM sidecar for deep named-entity recognition. Optimized for French Finance. |
+| 2 | AI NER | Sends text to SLM sidecar for deep named-entity recognition. Default model (`openai/privacy-filter`) is general-purpose, not French-finance-tuned — a French-finance fine-tune is roadmap work, not shipped (see `apps/web/public/content/reference/FAQ.md`). |
 | 2.5 | Boundary Artifact Cleanup | Absorbs orphaned 1-3 char residues left adjacent to tokens by SLM sub-word tokenization (e.g. `[ORG_...]7`) to prevent partial PII leakage |
 | 3 | Structural Heuristics | Context-aware detection for structured document types |
 
@@ -212,7 +212,7 @@ The Entity Registry (`canonical_entities`/`entity_variants`) is exempt from the 
 
 | App | Dev port | API target |
 |---|---|---|
-| `apps/web` | `8080` (Vite) | Refinery HTTP on `8080` (same port — production build served by Go) |
+| `apps/web` | `8080` (Vite, unrelated to the refinery's own port) | Refinery HTTP on `4141` (production build served by Go on the same port) |
 
 ```bash
 # apps/web

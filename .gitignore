@@ -97,6 +97,9 @@ apps/automation_bridge/
 # Claude Code local settings (dev environment hooks, not for public)
 .claude/settings.local.json
 
+# Claude Code worktree sessions (local scratch, not for public)
+.claude/worktrees/
+
 # Internal scripts
 test_sombra_query.sh
 

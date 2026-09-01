@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "ocultar-pii",
   "display_name": "Ocultar PII Refinery",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Zero-egress PII redaction for Mistral Le Chat workflows. Redacts names, emails, IBANs, SIRET/SIREN, phone numbers, and credit cards before any AI processing. Runs entirely in your infrastructure — no data ever leaves your environment.",
-  "long_description": "Ocultar est un moteur local de détection et de rédaction des DCP (Données à Caractère Personnel). Cette extension donne à Mistral Le Chat deux outils :\n\n- **refine_text** — rédacte les DCP de tout texte avant qu'il n'atteigne Le Chat, en remplaçant les valeurs sensibles par des jetons déterministes (ex. `[EMAIL_9c8f7a1b]`). Optimisé pour le RGPD, la CNIL, les numéros SIRET/SIREN, IBAN, et les adresses françaises.\n- **reveal_tokens** — re-tokenise les jetons en clair pour les auditeurs autorisés (chaque appel est enregistré dans une piste d'audit immuable signée Ed25519).\n\nTout le traitement se fait sur votre machine via le Refinery Ocultar local. Si le Refinery est injoignable, les deux outils échouent en mode fermé — le texte brut n'est jamais transmis. Zéro-égresssion est une garantie architecturale, pas une politique.",
+  "long_description": "Ocultar est un moteur local de détection et de rédaction des DCP (Données à Caractère Personnel). Cette extension donne à Mistral Le Chat six outils :\n\n- **refine_text** — rédacte les DCP de tout texte avant qu'il n'atteigne Le Chat, en remplaçant les valeurs sensibles par des jetons déterministes (ex. `[EMAIL_9c8f7a1b]`). Optimisé pour le RGPD, la CNIL, les numéros SIRET/SIREN, IBAN, et les adresses françaises.\n- **reveal_tokens** — re-tokenise les jetons en clair pour les auditeurs autorisés (chaque appel est enregistré dans une piste d'audit immuable signée Ed25519).\n- **register_entity** / **list_entities** / **seed_entities** — gèrent le registre d'entités persistant afin que les variantes d'un nom (ex. 'Alice', 'A. Martin') se résolvent vers le même jeton d'une session à l'autre (auditeurs uniquement).\n- **sombra_query** — pose une question rédigée via la passerelle Ocultar Sombra, qui rédacte les DCP, achemine la requête vers le LLM choisi, puis réhydrate la réponse (nécessite Sombra en cours d'exécution séparément).\n\nTout le traitement se fait sur votre machine via le Refinery Ocultar local (et Sombra, pour sombra_query). Si l'un ou l'autre service est injoignable, chaque outil échoue en mode fermé — le texte brut n'est jamais transmis. (sombra_query fait exception intentionnellement : elle retourne sa réponse entièrement réhydratée à cet hôte MCP par conception — la garantie de rédaction s'applique à ce qui atteint le LLM ciblé, pas à la réponse renvoyée ici.) Zéro-égression est une garantie architecturale, pas une politique.",
   "author": {
     "name": "Ocultar Security",
     "email": "edu@ocultar.dev",
@@ -12,12 +12,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Edu963/ocultar"
+    "url": "https://github.com/ocultar-dev/ocultar"
   },
   "homepage": "https://ocultar.dev",
-  "documentation": "https://github.com/Edu963/ocultar/blob/main/extensions/mistral/README.md",
-  "support": "https://github.com/Edu963/ocultar/issues",
-  "license": "Apache-2.0",
+  "documentation": "https://github.com/ocultar-dev/ocultar/blob/main/extensions/mistral/README.md",
+  "support": "https://github.com/ocultar-dev/ocultar/issues",
+  "license": "AGPL-3.0-only",
   "keywords": ["pii", "dcp", "privacy", "rgpd", "gdpr", "zero-egress", "security", "redaction", "compliance", "france", "mistral"],
   "privacy_policies": ["https://ocultar.dev/privacy"],
   "server": {
@@ -25,11 +25,13 @@
     "entry_point": "ocultar_mistral_mcp.py",
     "mcp_config": {
       "command": "uvx",
-      "args": ["ocultar-mistral-mcp@0.2.0"],
+      "args": ["ocultar-mistral-mcp@0.3.0"],
       "env": {
         "OCULTAR_URL": "${user_config.ocultar_url}",
         "OCULTAR_API_KEY": "${user_config.ocultar_api_key}",
-        "OCULTAR_AUDITOR_TOKEN": "${user_config.ocultar_auditor_token}"
+        "OCULTAR_AUDITOR_TOKEN": "${user_config.ocultar_auditor_token}",
+        "OCULTAR_SOMBRA_URL": "${user_config.ocultar_sombra_url}",
+        "OCULTAR_SOMBRA_TOKEN": "${user_config.ocultar_sombra_token}"
       }
     }
   },
@@ -39,7 +41,7 @@
       "title": "Ocultar Refinery URL",
       "description": "URL of your locally running Ocultar Refinery",
       "required": true,
-      "default": "http://localhost:8080"
+      "default": "http://localhost:4141"
     },
     "ocultar_api_key": {
       "type": "string",
@@ -51,7 +53,21 @@
     "ocultar_auditor_token": {
       "type": "string",
       "title": "Auditor Token",
-      "description": "Enables the reveal_tokens tool. Must match OCU_AUDITOR_TOKEN on the server. Leave blank to disable token reveal.",
+      "description": "Enables reveal_tokens and the Entity Registry tools (register_entity, list_entities, seed_entities). Must match OCU_AUDITOR_TOKEN on the server. Leave blank to disable these tools.",
+      "required": false,
+      "sensitive": true
+    },
+    "ocultar_sombra_url": {
+      "type": "string",
+      "title": "Ocultar Sombra Gateway URL",
+      "description": "URL of your locally running Ocultar Sombra gateway (enables sombra_query)",
+      "required": false,
+      "default": "http://localhost:8086"
+    },
+    "ocultar_sombra_token": {
+      "type": "string",
+      "title": "Sombra Bearer Token",
+      "description": "Enables sombra_query. Sombra rejects requests with no Bearer token — leave blank to disable this tool.",
       "required": false,
       "sensitive": true
     }
@@ -64,6 +80,22 @@
     {
       "name": "reveal_tokens",
       "description": "De-tokenize Ocultar tokens back to plaintext (auditor-only)"
+    },
+    {
+      "name": "register_entity",
+      "description": "Register a canonical PII entity and its variants (auditor-only)"
+    },
+    {
+      "name": "list_entities",
+      "description": "List registered PII entities (auditor-only)"
+    },
+    {
+      "name": "seed_entities",
+      "description": "Bulk-register PII entities (auditor-only)"
+    },
+    {
+      "name": "sombra_query",
+      "description": "Ask a redacted question via the Ocultar Sombra gateway"
     }
   ],
   "compatibility": {

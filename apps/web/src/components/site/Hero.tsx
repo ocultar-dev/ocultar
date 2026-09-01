@@ -15,7 +15,7 @@ export const Hero = () => {
         <div className="flex flex-col items-center text-center">
           <div className="pill pill-accent animate-fade-up">
             <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Open Source · Zero-Egress · Apache 2.0</span>
+            <span>Open Source · Zero-Egress · AGPLv3</span>
           </div>
 
           <h1
@@ -59,7 +59,7 @@ export const Hero = () => {
             className="mt-6 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground animate-fade-up"
             style={{ animationDelay: "240ms" }}
           >
-            Apache 2.0 · Self-hosted · No data leaves your machine
+            AGPLv3 · Self-hosted · No data leaves your machine
           </p>
         </div>
 

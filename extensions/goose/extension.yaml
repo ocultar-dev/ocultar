@@ -5,9 +5,9 @@ description: >
   Redacts names, IBANs, emails, phone numbers, and financial identifiers
   before any upstream processing. Runs entirely in your infrastructure —
   no data leaves your environment.
-version: 0.2.0
+version: 0.3.0
 author: ocultar-dev
-license: Apache-2.0
+license: AGPL-3.0-only
 repository: https://github.com/ocultar-dev/ocultar
 tags:
   - security
@@ -28,8 +28,19 @@ env:
   OCULTAR_API_KEY:
     description: Your Ocultar API key
     required: false
+  OCULTAR_SOMBRA_URL:
+    description: URL of your local Ocultar Sombra gateway (enables sombra_query)
+    default: http://localhost:8086
+    required: false
+  OCULTAR_SOMBRA_TOKEN:
+    description: Bearer token for the Sombra gateway (enables sombra_query)
+    required: false
 tools:
   - name: refine_text
     description: >
       Redacts PII from text locally before AI processing.
       Returns clean text and a token map for re-hydration.
+  - name: sombra_query
+    description: >
+      Ask a redacted question via the Ocultar Sombra gateway — redacts PII,
+      routes to the chosen LLM, and rehydrates the response.

@@ -114,6 +114,30 @@ func TestEntityRegistry_Rehydration(t *testing.T) {
 	t.Logf("✅ Rehydration: [PERSON_1] → %q", name)
 }
 
+// TestEntityRegistry_RehydrateStringMatchesEntityTokens guards against a
+// regression where RehydrateString's token-scanning regex only recognized
+// the 16-hex-char hash form and silently skipped over entity-registry tokens
+// like "[PERSON_1]" embedded in free text (e.g. an LLM response), leaving them
+// un-rehydrated even though DecryptToken itself resolves them correctly.
+func TestEntityRegistry_RehydrateStringMatchesEntityTokens(t *testing.T) {
+	_, v := makeEntityRefinery(t)
+
+	if _, err := v.RegisterEntity("PERSON", "Marie Curie", []string{"Marie", "Curie"}); err != nil {
+		t.Fatalf("RegisterEntity: %v", err)
+	}
+
+	masterKey := []byte("entity-test-key-32-bytes-padding")
+	out, err := refinery.RehydrateString(v, masterKey, "Please loop in [PERSON_1] on this thread.")
+	if err != nil {
+		t.Fatalf("RehydrateString: %v", err)
+	}
+	want := "Please loop in Marie Curie on this thread."
+	if out != want {
+		t.Errorf("want %q, got %q", want, out)
+	}
+	t.Logf("✅ RehydrateString resolved entity token: %s", out)
+}
+
 // TestEntityRegistry_NonRegisteredFallsToHash ensures that a PERSON-type match
 // for an unknown name still receives a hash-based token (existing behavior).
 func TestEntityRegistry_NonRegisteredFallsToHash(t *testing.T) {
