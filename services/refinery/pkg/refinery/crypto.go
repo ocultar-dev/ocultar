@@ -59,7 +59,7 @@ func Decrypt(hexCiphertext string, key []byte) ([]byte, error) {
 // DecryptToken resolves an OCULTAR vault token back to its original plaintext.
 // It handles two token formats:
 //   - Entity tokens: "[PERSON_1]" (numeric suffix) → canonical_name from entity registry
-//   - Hash tokens:   "[PERSON_ab3c12ef]" (8-char hex) → AES-decrypted PII from vault
+//   - Hash tokens:   "[PERSON_ab3c12ef34567890]" (16-char hex) → AES-decrypted PII from vault
 //
 // Returns the token unchanged if it is not found in either store (safe fallback).
 func DecryptToken(v vault.Provider, masterKey []byte, token string) (string, error) {
@@ -74,7 +74,7 @@ func DecryptToken(v vault.Provider, masterKey []byte, token string) (string, err
 		// (handles the edge case where a hash happens to look numeric).
 	}
 
-	// Standard path: token has an 8-char hex suffix — AES-decrypt from vault.
+	// Standard path: token has a 16-char hex suffix — AES-decrypt from vault.
 	type tokenLookup interface {
 		GetEncryptedByToken(token string) (string, bool)
 	}

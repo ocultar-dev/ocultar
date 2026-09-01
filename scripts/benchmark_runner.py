@@ -30,6 +30,8 @@ plt.rcParams.update({
     'figure.titlesize': 18
 })
 
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 ARTIFACT_DIR = "/home/edu/.gemini/antigravity/brain/c3db0ebe-76b2-49fe-b1b6-f97177aff73b"
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
@@ -100,11 +102,11 @@ class OcultarController:
                 env={
                     **os.environ,
                     "PORT": "8086",
-                    "PRIVACY_FILTER_MODEL_PATH": "/home/edu/ocultar/models/privacy-filter-fr-finance"
+                    "PRIVACY_FILTER_MODEL_PATH": os.path.join(REPO_ROOT, "models", "privacy-filter-fr-finance")
                 },
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                cwd="/home/edu/ocultar"
+                cwd=REPO_ROOT
             )
             
             # Wait up to 12 seconds for sidecar to become healthy
@@ -137,7 +139,7 @@ class OcultarController:
             env={**os.environ, **env},
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            cwd="/home/edu/ocultar"
+            cwd=REPO_ROOT
         )
         
         # Wait for server to start

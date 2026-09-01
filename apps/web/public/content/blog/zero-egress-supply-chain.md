@@ -143,12 +143,4 @@ That is the system.
 
 ---
 
-*Zero-egress architecture. Self-hosted. Apache 2.0. Docker Compose in under five minutes.*
-
----
-
-## HN Submission
-
-**Title / comment (280 characters):**
-
-> OpenAI's privacy-filter model validates local-first PII detection — but a model isn't a system. No vault, no proxy, no audit trail. Two recent breaches show why the middleware layer is the attack surface. Here's the full zero-egress architecture. (self-hosted, Docker Compose)
+*Zero-egress architecture. Self-hosted. AGPLv3. Docker Compose in under five minutes.*

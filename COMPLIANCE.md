@@ -18,7 +18,7 @@ audit, which OCULTAR has not yet undergone — no code change makes this
 a committed date.
 
 What you *can* verify yourself in the meantime: OCULTAR is open source
-(Apache 2.0), so every control claim below is checkable directly against
+(AGPLv3), so every control claim below is checkable directly against
 the code that's actually running, not just a vendor's word for it.
 
 ## Data Minimization & Storage Limitation (GDPR Art. 5(1)(e))

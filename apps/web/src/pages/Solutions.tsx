@@ -185,7 +185,7 @@ for _, err := range errs {
             </h2>
             <h3 className="text-[18px] text-muted-foreground">The agentic privacy gateway</h3>
             <p className="text-[15px] leading-relaxed text-muted-foreground">
-              Sombra sits between your infrastructure and every AI provider. It intercepts, sanitizes, routes, and re-hydrates — only redacted prompts are ever transmitted outbound. Fail-closed by construction. Apache 2.0 — self-host it, fork it, run it air-gapped.
+              Sombra sits between your infrastructure and every AI provider. It intercepts, sanitizes, routes, and re-hydrates — only redacted prompts are ever transmitted outbound. Fail-closed by construction. AGPLv3 — self-host it, fork it, run it air-gapped.
             </p>
             <a
               href="https://github.com/ocultar-dev/ocultar"
@@ -385,7 +385,7 @@ for _, err := range errs {
             </h2>
             <h3 className="text-[18px] text-muted-foreground">Governance, audit, and sovereign operations</h3>
             <p className="text-[15px] leading-relaxed text-muted-foreground">
-              All included in the Apache 2.0 codebase. Deep-scan NER, SIEM-compatible syslog forwarding, immutable Ed25519 audit logs, and PostgreSQL HA vault — no licence key, no gating. Deploy what you need.
+              All included in the AGPLv3 codebase. Deep-scan NER, SIEM-compatible syslog forwarding, immutable Ed25519 audit logs, and PostgreSQL HA vault — no licence key, no gating. Deploy what you need.
             </p>
           </div>
 
