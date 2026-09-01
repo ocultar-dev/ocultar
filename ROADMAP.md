@@ -67,6 +67,7 @@ Initial public release.
 
 - [ ] 117/117 Tier 1 coverage (close the remaining SLM-only gap)
 - [ ] Custom entity type API: define new PII types at runtime via the entity registry
+- [ ] French-finance-tuned Tier 2 NER model — partner-driven engagement, needs 5K+ real-world labeled examples (see FAQ.md); an internal fine-tune attempt on 200 synthetic examples failed to converge (eval F1 ≈ 0.06) and was scrapped
 
 ### Resilience
 
