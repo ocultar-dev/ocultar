@@ -47,10 +47,16 @@ const SECTIONS = [
     ],
   },
   {
+    label: "Blog",
+    items: [
+      { label: "OCULTAR is fully open source now", path: "blog/going-fully-open-source" },
+      { label: "Zero-Egress Supply Chain", path: "blog/zero-egress-supply-chain" },
+    ],
+  },
+  {
     label: "Other",
     items: [
       { label: "Secret Management", path: "SECRETS" },
-      { label: "Blog: Zero-Egress Supply Chain", path: "blog/zero-egress-supply-chain" },
     ],
   },
 ];

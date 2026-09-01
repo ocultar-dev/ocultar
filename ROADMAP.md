@@ -47,6 +47,12 @@ Initial public release.
 - [ ] Cursor / Windsurf MCP connector
 - [ ] Structured error codes in API responses (machine-readable failure reasons)
 - [x] `golangci-lint` pass across all modules
+- [ ] Tighten "Protect Main" ruleset (github.com/ocultar-dev/ocultar/settings/rules/17754757): change org-admin bypass from "Always" to "For pull requests only", and add `lint apps/web` to required status checks alongside `golangci-lint`/`govulncheck` — currently direct pushes to `main` silently bypass PR review and all CI checks
+
+### Marketing & outreach (high priority — starting 2026-08-29)
+
+- [ ] Publish launch/marketing content about OCULTAR across the web (blog posts, dev community launches, socials)
+- [x] Add a founder/creator bio section to ocultar.dev — portfolio-worthy, discoverable, points back to the maintainer
 
 ---
 
@@ -61,6 +67,7 @@ Initial public release.
 
 - [ ] 117/117 Tier 1 coverage (close the remaining SLM-only gap)
 - [ ] Custom entity type API: define new PII types at runtime via the entity registry
+- [ ] French-finance-tuned Tier 2 NER model — partner-driven engagement, needs 5K+ real-world labeled examples (see FAQ.md); an internal fine-tune attempt on 200 synthetic examples failed to converge (eval F1 ≈ 0.06) and was scrapped
 
 ### Resilience
 
@@ -95,4 +102,4 @@ Initial public release.
 
 ---
 
-*Apache 2.0 — Self-hosting is free and always will be.*
+*AGPLv3 — Self-hosting is free and always will be. Commercial licensing available, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).*

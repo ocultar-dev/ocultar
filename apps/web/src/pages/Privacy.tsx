@@ -83,7 +83,7 @@ export default function Privacy() {
             Privacy Policy
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Effective date: 28 April 2026 &nbsp;·&nbsp; Product: OCULTAR PII Refinery &nbsp;·&nbsp; Apache 2.0 open-source
+            Effective date: 28 April 2026 &nbsp;·&nbsp; Product: OCULTAR PII Refinery &nbsp;·&nbsp; AGPLv3 open-source
           </p>
         </div>
 

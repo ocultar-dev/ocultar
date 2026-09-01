@@ -38,7 +38,7 @@ Returns engine status. No authentication required.
 ```json
 {
   "status": "healthy",
-  "version": "1.14",
+  "version": "1.15.0",
   "vault": { "status": "online" },
   "slm":   { "status": "online", "circuit": "closed" }
 }

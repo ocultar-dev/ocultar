@@ -61,6 +61,13 @@ services:
       - TIER2_ENGINE=${TIER2_ENGINE:-privacy-filter}
       - SLM_ADAPTER=${SLM_ADAPTER:-}
       - SLM_SIDECAR_URL=${SLM_SIDECAR_URL:-http://privacy-filter:8086}
+      # SLM_SIDECAR_URL above is a Compose service hostname, not loopback, so
+      # NewRemoteScanner's zero-egress guard (services/refinery/pkg/inference/remote.go)
+      # refuses to start unless this is set. Safe here specifically because
+      # privacy-filter/llama-qwen never leave the private `ocultar-net` bridge
+      # network this stack defines below — no PII crosses the host boundary.
+      # Do not copy this into a deployment where the sidecar is genuinely remote.
+      - OCU_ALLOW_REMOTE_SLM=true
     volumes:
       - vault-data:/data
     depends_on:

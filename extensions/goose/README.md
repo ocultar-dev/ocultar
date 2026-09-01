@@ -45,13 +45,20 @@ The tool returns the cleaned text with each PII value replaced by a deterministi
 | Tool | Description |
 |---|---|
 | `refine_text` | Redacts PII from text before AI processing |
+| `sombra_query` | Asks a redacted question via the Ocultar Sombra gateway — redacts PII, routes to the chosen LLM, rehydrates the response. Requires `OCULTAR_SOMBRA_TOKEN` and Sombra running separately (`go run ./apps/sombra`). |
 
-> **Note:** `reveal_tokens` (de-tokenization) is intentionally omitted from this extension.
-> Token reveal is an auditor-only operation and is not suitable for automated agent workflows.
-> Use the Claude MCP extension if you need reveal access.
+> **Note:** `reveal_tokens` (de-tokenization) and the Entity Registry tools
+> (`register_entity`, `list_entities`, `seed_entities`) are intentionally
+> omitted from this extension. They are auditor-only operations and not
+> suitable for automated agent workflows. Use the Claude or Mistral MCP
+> extension if you need them.
 
 ### Why local-only?
 The zero-egress design means your sensitive data never leaves your infrastructure.
 The MCP server runs on stdio — no network server, no remote calls, no supply chain attack surface.
 If Ocultar is unreachable, the extension returns an error and withholds the raw text — it never
 forwards unmasked data as a fallback.
+
+## License
+
+AGPLv3 — see [LICENSE](../../LICENSE). Commercial licensing available for organizations that cannot comply with AGPLv3's source-disclosure requirements — see [COMMERCIAL_LICENSE.md](../../COMMERCIAL_LICENSE.md).

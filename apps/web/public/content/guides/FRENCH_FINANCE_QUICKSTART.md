@@ -157,4 +157,4 @@ docker compose -f docker-compose.yml -f docker-compose.french-finance.yml down -
 
 - Read the **[DPO Compliance Narrative](../compliance/GDPR_FRENCH_FINANCE.md)** for GDPR Art. 25/32 mapping, CNIL specifics, and the technical evidence your legal team needs.
 - Configure a real upstream: set `OCU_PROXY_TARGET=https://api.openai.com` (or your Mistral/internal endpoint) in `.env`.
-- Enable Tier 2 AI NER for contextual entity detection: `docker compose -f docker-compose.yml -f docker-compose.french-finance.yml --profile ai up --build`
+- Enable Tier 2 AI NER for contextual entity detection: `docker compose -f docker-compose.yml -f docker-compose.french-finance.yml --profile ai up --build` (general-purpose NER model; a French-finance-tuned model is roadmap work — see [`FAQ.md`](../reference/FAQ.md))

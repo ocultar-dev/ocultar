@@ -8,18 +8,19 @@ import (
 	"github.com/ocultar-dev/ocultar/vault"
 )
 
-// Vault tokens have the form [TYPE_16hexchars], e.g. [PERSON_ab3c12ef4d5e6f70].
-// Both regexes below are anchored to the start of the string for efficient use
+// Vault tokens have the form [TYPE_16hexchars], e.g. [PERSON_ab3c12ef4d5e6f70],
+// or the Entity Registry's canonical form [TYPE_N], e.g. [PERSON_1]. Both
+// regexes below are anchored to the start of the string for efficient use
 // against the tail of the accumulated buffer.
 var (
 	// completeToken matches a fully-formed vault token at the start of a string.
-	completeToken = regexp.MustCompile(`^\[[A-Z_]+_[0-9a-f]{16}\]`)
+	completeToken = regexp.MustCompile(`^\[[A-Z_]+_(?:[0-9a-f]{16}|[0-9]+)\]`)
 
 	// incompleteToken matches text that looks like the opening of a vault token
 	// but is not yet complete. Used to detect where to hold the buffer.
-	// Matches: "[", "[PERSON", "[PERSON_", "[PERSON_ab3c12ef4d5e6f"
-	// Does NOT match: "[markdown text]", "[1234]" (lowercase / digit after bracket)
-	incompleteToken = regexp.MustCompile(`^\[[A-Z_]*(_[0-9a-f]{0,16})?$`)
+	// Matches: "[", "[PERSON", "[PERSON_", "[PERSON_ab3c12ef4d5e6f", "[PERSON_1"
+	// Does NOT match: "[markdown text]", "[1234]" (no TYPE_ prefix after bracket)
+	incompleteToken = regexp.MustCompile(`^\[[A-Z_]*(_(?:[0-9a-f]{0,16}|[0-9]+))?$`)
 )
 
 // SplitAtTokenBoundary splits s into:
