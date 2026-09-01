@@ -118,18 +118,23 @@ same token). Requires `Authorization: Bearer <OCU_AUDITOR_TOKEN>`.
 
 ## Architecture
 
-Ocultar runs two detection tiers before any text leaves the machine:
+Every request runs through one linear pipeline, in this order (see
+`services/refinery/pkg/refinery/refinery.go`, `RefineString`):
 
-### Tier 1 — Deterministic regex / heuristics (fast, zero-egress)
-
-| Sub-tier | Shield | What it catches |
-|----------|--------|-----------------|
-| 0 | Dictionary | VIP names, org names from `configs/protected_entities.json` |
-| 0.5 | Pattern + Entropy | High-entropy strings (API keys, secrets) via Shannon scoring |
+| Tier | Shield | What it does |
+|------|--------|---------------|
+| 0.1 | Base64 Evasion | Recursively decodes Base64/JWT/URL-encoded payloads and rescans the decoded content |
+| 0 | Dictionary | VIP/org names from `configs/protected_entities.json` |
+| 0.5 | Entity Registry Pre-Pass | Replaces all registered entity variants by direct string match *before* NER runs, so known identities are masked even when the model misses them |
 | 1 | Rule Engine | EMAIL, SSN, IBAN, credit cards, 50+ national ID formats |
 | 1.1 | Phone Shield | libphonenumber validation |
 | 1.2 | Address Shield | Heuristic street address parser (EN/FR/ES/DE) |
-| 1.5 | Contextual | Names in greetings, signatures, interrogative sentences |
+| 1.5 | Contextual (Greeting & Signature) | Names in greetings, signatures, interrogative sentences |
+| 2 | AI NER | SLM sidecar named-entity recognition (mandatory phase when Tier 2 is enabled) |
+| 2.5 | Boundary Artifact Cleanup | Absorbs 1-3 char orphaned fragments left adjacent to tokens by SLM sub-word tokenization |
+| 3 | Structural Heuristics | Generalized multilingual rules — titles, possessives, semantic triggers (e.g. `DIVORCE`, `HOSPITAL`) |
+
+Tiers 0.1–1.5 and 3 always run and never leave the machine. Tier 2 is optional — see below.
 
 ### Tier 2 — SLM-based NER (higher recall, configurable endpoint)
 
@@ -142,7 +147,29 @@ SLM_SIDECAR_URL=http://localhost:8085 ./ocultar -serve 4141
 ```
 
 Use `SLM_ADAPTER=openai-chat` for a llama.cpp / Qwen endpoint, or leave unset for the
-privacy-filter protocol (default).
+privacy-filter protocol (default). `NewRemoteScanner` refuses to dial a non-loopback
+`SLM_SIDECAR_URL` unless `OCU_ALLOW_REMOTE_SLM=true` is explicitly set — Tier 2 sends
+raw, un-redacted text to that endpoint, so this guard keeps a misconfigured URL from
+silently exfiltrating PII off-host.
+
+---
+
+## Sombra Gateway
+
+`apps/sombra` is a separate agentic LLM gateway (default port 8086) — an OpenAI-compatible
+`/v1/chat/completions` proxy with real SSE streaming, JWT Bearer auth, circuit-breaking,
+and its own Ed25519-signed audit log. It runs the same detection pipeline as the proxy but
+is built for gateway-style deployments (Slack app connector, multi-provider routing) rather
+than a single fixed upstream. See `docs/guides/architecture/sombra.md` for the full picture.
+
+---
+
+## MCP integrations
+
+OCULTAR ships as an MCP server for common AI coding/agent clients, published on PyPI:
+`ocultar-claude-mcp`, `ocultar-goose-mcp`, `ocultar-mistral-mcp`. Each exposes tools to
+refine text and manage the entity registry (`register_entity`, `sombra_query`) directly
+from the client. See `apps/web/public/content/guides/MCP_EXTENSIONS.md` for setup.
 
 ---
 
