@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **MCP Entity Registry tools**: `register_entity`, `list_entities`, `seed_entities` added to the Claude and Mistral MCP extensions (auditor-only, matching `reveal_tokens`'s existing gate).
+- **MCP `sombra_query` tool**: added to all three MCP extensions (Claude, Goose, Mistral) — sends a prompt through the Sombra gateway for redact-route-rehydrate in one call. Requires `OCULTAR_SOMBRA_TOKEN`.
+
+### Changed
+- **MCP Mistral extension default `OCULTAR_URL`**: changed from `http://localhost:8080` to `http://localhost:4141` to match the Claude and Goose extensions and this repo's standardized Refinery port. Existing 0.2.0 users relying on the old default will need to set `OCULTAR_URL` explicitly (or upgrade the Refinery's own `--serve` port to match) after upgrading.
+
+### Fixed
+- **MCP extension license metadata**: all three MCP packages (`ocultar-claude-mcp`, `ocultar-goose-mcp`, `ocultar-mistral-mcp`) were still declaring `Apache-2.0` after the repo-wide relicense to AGPLv3 on 2026-06-28 — corrected to `AGPL-3.0-only` across `pyproject.toml`, `manifest.json`/`extension.yaml`, and README files. `extensions/{claude,mistral}/manifest.json` also still pointed at the old `Edu963/ocultar` personal fork — corrected to `ocultar-dev/ocultar`.
+- **MCP Goose extension error hint**: the connection-error remediation message referenced the personal Docker registry namespace `ghcr.io/edu963/ocultar` — corrected to `ghcr.io/ocultar-dev/ocultar`.
+
 ## [1.15.0] - 2026-06-26
 
 ### Added

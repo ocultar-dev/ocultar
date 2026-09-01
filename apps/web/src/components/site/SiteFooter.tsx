@@ -22,6 +22,7 @@ const COLS = [
   {
     title: "Company",
     links: [
+      { label: "About", href: "/about" },
       { label: "Contact", href: "mailto:edu@ocultar.dev" },
       { label: "Privacy", href: "/privacy" },
     ],
@@ -41,7 +42,7 @@ export const SiteFooter = () => (
           </div>
           <p className="max-w-xs text-[13px] leading-relaxed text-muted-foreground">
             Open-source, zero-egress PII masking engine for AI workflows.
-            Runs in your infrastructure. Apache 2.0.
+            Runs in your infrastructure. AGPLv3.
           </p>
           <a
             href="https://github.com/ocultar-dev/ocultar"
@@ -96,6 +97,12 @@ export const SiteFooter = () => (
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           © {new Date().getFullYear()} OCULTAR · All rights reserved
         </p>
+        <Link
+          to="/about"
+          className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Built by Edu Trejos
+        </Link>
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary/70">
           Zero-egress · Sovereign · Fail-closed
         </p>
