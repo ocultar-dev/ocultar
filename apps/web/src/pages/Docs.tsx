@@ -53,12 +53,6 @@ const SECTIONS = [
       { label: "Zero-Egress Supply Chain", path: "blog/zero-egress-supply-chain" },
     ],
   },
-  {
-    label: "Other",
-    items: [
-      { label: "Secret Management", path: "SECRETS" },
-    ],
-  },
 ];
 
 const DEFAULT_DOC = "guides/SETUP_GUIDE";
