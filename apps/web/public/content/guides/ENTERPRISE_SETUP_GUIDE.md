@@ -29,7 +29,7 @@
 | **Docker** | Docker Engine + Compose plugin, or Docker Desktop |
 | **RAM** | 4 GB minimum (8 GB recommended for smooth model inference) |
 | **Disk** | ~1 GB free for HuggingFace model cache on first run |
-| **Go** | 1.22+ only if building from source |
+| **Go** | 1.25+ only if building from source |
 | **`OCU_JWT_SECRET`** | HS256 secret for Sombra Bearer token validation. Generate: `openssl rand -hex 32`. Required for Sombra gateway deployments; not used by the standalone refinery binary. |
 
 ---
@@ -118,42 +118,40 @@ export OCU_PROXY_PORT=8081                        # host port the proxy listens 
 ### Step 2 — Launch the cluster
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-**What happens on first run:**
-1. `init-slm` (Alpine) downloads `qwen1_5-1_8b-chat-q4_k_m.gguf` (~1.2 GB) from HuggingFace into the `slm_data` named volume. This only happens once — subsequent starts detect the cached file and skip immediately.
-2. `slm-ner` starts the `llama.cpp` server and loads the model into memory. The container is health-checked before the proxy starts.
-3. `ocultar-proxy` starts once `slm-ner` is healthy, then begins listening for requests.
+By default this only starts `echo-upstream` and `ocultar-proxy` — Tier 1 (regex) detection, no Tier 2 AI sidecar, no model download. Tier 2 AI NER is opt-in via a Compose profile:
+
+```bash
+# piiranha sidecar (openai/privacy-filter model, downloads ~500 MB on first run)
+OCU_PILOT_MODE=0 docker compose --profile ai up -d --build
+
+# OR: local Qwen1.5-1.8B via llama.cpp (no internet required; needs
+# models/qwen-1.5b-q4_k_m.gguf already present)
+docker compose --profile qwen up -d --build
+```
+
+**What happens on first run (`--profile ai`):** the `privacy-filter` container downloads its model into the `./models` bind mount on first run only; subsequent starts reuse the cached model. `ocultar-proxy` waits on `echo-upstream` before it starts listening.
 
 Watch progress:
 ```bash
 docker compose logs -f
 ```
 
-Wait for:
-```
-ocultar-init-slm | [+] Download complete.
-slm-ner          | llama server listening at http://0.0.0.0:8080
-ocultar-proxy    | [INFO] Tier 2 AI active via Qwen/llama.cpp: http://slm-ner:8080
-ocultar-proxy    | [INFO] OCULTAR proxy listening on :8081
-```
-
-> **Note:** `init-slm` exits after the download completes — this is expected. `docker compose ps` will show it as `Exited (0)`.
-
 **Optional — Multilingual NER sidecar (piiranha-v1):**
 
-For mixed-language corpora, swap the default model for `piiranha-v1` by setting the model path before starting:
+For mixed-language corpora, swap the default model by setting `PRIVACY_FILTER_MODEL_PATH` before starting:
 
 ```bash
 PRIVACY_FILTER_MODEL_PATH=iiiorg/piiranha-v1-detect-personal-information \
-MODEL_SCHEMA=piiranha docker compose --profile ai up -d
+  OCU_PILOT_MODE=0 docker compose --profile ai up -d --build
 ```
 
 ### Step 3 — Verify with the smoke test
 
 ```bash
-bash scripts/smoke_test.sh
+bash tools/scripts/scripts/smoke_test.sh
 ```
 
 Expected:

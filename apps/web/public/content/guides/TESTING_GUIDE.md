@@ -11,11 +11,16 @@ The refinery runs the full detection pipeline (Tiers 0–2, including local AI N
 ### Step 1 — Start the refinery
 
 ```bash
-# If running from the distribution zip:
-bash scripts/setup.sh
+# If running from a release binary/archive:
+./ocultar --serve 3030
 
 # If running from source:
-Navigate to: **http://localhost:3000**
+go run ./services/refinery/cmd/main.go --serve 3030
+```
+
+### Step 2 — Open the dashboard
+
+Navigate to: **http://localhost:3030/index.html**
 
 ### Step 3 — Paste test data
 
@@ -112,7 +117,7 @@ docker compose -f docker-compose.proxy.yml up -d
 ### Step 2 — Run the automated smoke test
 
 ```bash
-./scripts/smoke_test.sh
+bash tools/scripts/scripts/smoke_test.sh
 ```
 
 Expected output:
@@ -125,7 +130,7 @@ Expected output:
 ### Step 3 — Manual test with curl
 
 ```bash
-curl -s -X POST http://localhost:8080/v1/chat/completions \
+curl -s -X POST http://localhost:8081/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o",

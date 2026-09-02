@@ -54,7 +54,7 @@ Art. 25(2) requires that the *default* behavior protects data subjects, not that
 
 | Default behavior | OCULTAR enforcement |
 |---|---|
-| No PII forwarded by default | If `redactBody()` returns any error, the proxy responds HTTP 503 and closes the connection without opening the upstream socket. |
+| No PII forwarded by default | If `redactBody()` returns any error, the proxy responds HTTP 500 (fail-closed) and closes the connection without opening the upstream socket. |
 | Vault unavailability blocks the request | If the vault write fails (encrypted storage of token ↔ ciphertext mapping), the request is rejected. A token that cannot be stored cannot be safely issued. |
 | AI scanner unavailability does not bypass detection | If the Tier 2 SLM sidecar times out or is unreachable, the proxy returns HTTP 500. It does not fall back to forwarding un-scanned text. |
 | Queue saturation blocks new requests | If the internal processing queue is full, the proxy responds HTTP 429. It does not silently drop the redaction step. |
@@ -74,7 +74,7 @@ Every failure mode is fail-closed. There is no graceful degradation path that co
 | Requirement | OCULTAR Implementation |
 |---|---|
 | Controller must demonstrate compliance (accountability) | The Ed25519-signed audit log provides a tamper-evident record of every refine and reveal operation: actor, timestamp, payload hash, and digital signature over the full event. |
-| Audit records must be verifiable | The log is hash-chained: each entry contains the SHA-256 of the previous entry. Any deletion, modification, or insertion breaks the chain and is detected by the built-in verifier (`--verify-audit`). |
+| Audit records must be verifiable | The log is hash-chained: each entry contains the SHA-256 of the previous entry and an Ed25519 signature. Any deletion, modification, or insertion breaks the chain, making tampering detectable by replaying the chain and signatures. |
 | Records of processing activities (Art. 30) | Each log entry records the processing purpose (refine vs. reveal), token identifiers affected, and timestamp — sufficient to reconstruct the processing record for a given data subject. |
 
 ### 3.6 SSRF and Network Boundary Enforcement (Art. 25(1), Art. 32(1)(b))
@@ -97,11 +97,11 @@ Blocked target classes:
 |---|---|---|
 | Pseudonymisation | HMAC-SHA256 deployment-keyed token replacement | Token format `[TYPE_16hexchars]` in all upstream payloads |
 | Data minimisation | Zero-egress proxy: upstream receives tokens only | Network capture shows no raw PII in upstream requests |
-| Privacy by default | Fail-closed on every error path | 9 automated fail-closed tests in `services/refinery/fail_closed_test.go` |
+| Privacy by default | Fail-closed on every error path | 9 automated fail-closed tests across `services/refinery/pkg/proxy/fail_closed_test.go` (3) and `services/refinery/pkg/refinery/failclosed_test.go` (6) |
 | Encryption at rest | AES-256-GCM vault with HKDF-SHA256 | Vault file contains no readable plaintext |
 | Key separation | OCU_MASTER_KEY injected at runtime via secrets manager | `.env.example` documents the variable; inject via Doppler, AWS Secrets Manager, or equivalent |
-| Accountability | Hash-chained Ed25519 audit log | `--verify-audit` produces pass/fail with chain index |
-| SSRF prevention | RFC 1918 / loopback / link-local blocklist | 14 automated SSRF tests in `services/refinery/ssrf_test.go` |
+| Accountability | Hash-chained, Ed25519-signed audit log | Each entry embeds the SHA-256 of the prior entry and an Ed25519 signature — a broken chain or invalid signature is detectable by replay |
+| SSRF prevention | RFC 1918 / loopback / link-local blocklist | 14 automated SSRF tests in `apps/proxy/ssrf_test.go` |
 
 ---
 
@@ -138,7 +138,7 @@ All personal data is pseudonymised by the OCULTAR Refinery before transmission t
 
 **Measure 2 — Zero-egress guarantee**
 
-The OCULTAR proxy is configured fail-closed: any failure in the pseudonymisation step results in the request being rejected with HTTP 503 before the sub-processor connection is opened. No raw personal data is transmitted to the sub-processor under any failure condition.
+The OCULTAR proxy is configured fail-closed: any failure in the pseudonymisation step results in the request being rejected with HTTP 500 before the sub-processor connection is opened. No raw personal data is transmitted to the sub-processor under any failure condition.
 
 **Measure 3 — Encryption at rest**
 
@@ -146,7 +146,7 @@ Pseudonymisation mappings (token ↔ encrypted plaintext) are stored in an AES-2
 
 **Measure 4 — Audit trail**
 
-Every pseudonymisation and de-pseudonymisation event is recorded in a SHA-256 hash-chained, Ed25519-signed audit log. Log integrity is verifiable via the built-in chain verification tool. The log constitutes the Controller's Art. 30 processing record for AI-assisted operations.
+Every pseudonymisation and de-pseudonymisation event is recorded in a SHA-256 hash-chained, Ed25519-signed audit log. Each entry embeds the hash of the prior entry, so any deletion, modification, or insertion breaks the chain and is detectable on replay. The log constitutes the Controller's Art. 30 processing record for AI-assisted operations.
 
 **Measure 5 — Access control for de-pseudonymisation**
 

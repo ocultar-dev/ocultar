@@ -40,7 +40,10 @@ The `openai/privacy-filter` shows significant improvement over the current mock,
 4.  **Currency/Amounts**: While not strictly PII, $2.3M was not flagged (though usually Tier 2 focuses on identities).
 
 > [!IMPORTANT]
-> **Recommendation**: To achieve production readiness for Ocultar's finance tier, the `openai/privacy-filter` should be fine-tuned on a corpus of financial documents (invoices, SWIFT messages, and bank statements) to improve Organization and Financial Identifier recognition.
+> **Recommendation (at the time of this eval)**: To achieve production readiness for Ocultar's finance tier, the `openai/privacy-filter` should be fine-tuned on a corpus of financial documents (invoices, SWIFT messages, and bank statements) to improve Organization and Financial Identifier recognition.
+
+> [!NOTE]
+> **Status update**: This recommendation was later attempted. Per `ROADMAP.md`, an internal fine-tune on 200 synthetic examples failed to converge (eval F1 ≈ 0.06) and was scrapped. A French-finance-tuned Tier 2 model remains unshipped roadmap work — see `ROADMAP.md` and `apps/web/public/content/reference/FAQ.md` — and would need a partner-driven engagement with 5K+ real-world labeled examples, not another synthetic-data attempt.
 
 ## Raw Results
-Stored in `privacy_filter_results.json` for further analysis.
+Not preserved alongside this document — no `privacy_filter_results.json` is present in this repository.

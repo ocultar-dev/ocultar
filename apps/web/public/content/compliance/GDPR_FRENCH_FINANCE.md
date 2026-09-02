@@ -77,7 +77,7 @@ GDPR Art. 32 requires appropriate technical measures to ensure a level of securi
 | Measure | OCULTAR implementation |
 |---|---|
 | **Encryption at rest** | AES-256-GCM. Each PII value is encrypted with a key derived via HKDF-SHA256 from `OCU_MASTER_KEY` and `OCU_SALT`. |
-| **Pseudonymization** | Token format: `[TYPE_sha256[:8]]`. The token contains no original data; reversal requires the vault and the master key. |
+| **Pseudonymization** | Token format: `[TYPE_hmac-sha256[:16]]` (16 hex characters, e.g. `[IBAN_12ab34cd56ef7809]`). The token contains no original data; reversal requires the vault and the master key. |
 | **Integrity of the audit log** | Every vault operation and policy block is signed with Ed25519. Log entries cannot be tampered with without detection. |
 | **Fail-closed design** | If the AI sidecar is unavailable, the request fails with a security error. Data is never processed un-scanned. |
 | **Transport security** | All inter-service communication uses TLS. The proxy validates upstream certificates. |
@@ -172,4 +172,4 @@ This architecture satisfies the "appropriate safeguards" requirement of GDPR Art
 
 ---
 
-*This document reflects OCULTAR v1.14. For the latest compliance mapping, re-run `GET /api/compliance/evidence` against your deployed instance.*
+*This document reflects OCULTAR v1.15.0. For the latest compliance mapping, re-run `GET /api/compliance/evidence` against your deployed instance.*

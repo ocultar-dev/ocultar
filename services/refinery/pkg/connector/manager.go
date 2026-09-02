@@ -97,7 +97,6 @@ func (m *Manager) StopAll() {
 }
 
 // LoadPlugin loads a connector from a Go plugin (.so file).
-// enterprise feature (Pro Connector bitmask check belongs in the caller).
 func (m *Manager) LoadPlugin(path string) error {
 	p, err := plugin.Open(path)
 	if err != nil {

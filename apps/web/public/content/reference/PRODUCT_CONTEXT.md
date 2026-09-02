@@ -14,7 +14,7 @@ OCULTAR is an open-source **Global Data Refinery**. Its mission is to enable saf
 | **Live Refinery** | The multi-tier engine (Base64 Shield, Regex Registry, NLP, SLM) that detects and tokenizes PII in real-time. |
 | **Identity Vault** | A local, encrypted database (DuckDB/PostgreSQL) that stores mappings for deterministic re-hydration. |
 | **SLM Sidecar** | A high-performance inference engine for local AI-based PII detection (NER). |
-| **Sombra Gateway** | An advanced agentic gateway (external sibling) that adds multi-model routing and orchestrated query capabilities. |
+| **Sombra Gateway** | An advanced agentic gateway (`apps/sombra`, same repo and Go workspace) that adds multi-model routing and orchestrated query capabilities. |
 | **Governance & Audit** | Immutable Ed25519-signed audit log and SIEM-ready logging for all PII lifecycle events. |
 
 ## 3. Fundamental Principles

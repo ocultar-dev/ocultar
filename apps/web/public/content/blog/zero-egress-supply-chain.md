@@ -60,8 +60,8 @@ services:
 
   slm-engine:             # Tier 2 AI NER — local, no network egress
     environment:
-      - SLM_ENGINE=privacy-filter
-      - PRIVACY_FILTER_URL=http://privacy-filter-svc:8086
+      - SLM_ADAPTER=privacy-filter
+      - PYTHON_SIDECAR_URL=http://privacy-filter-svc:8086
 
   privacy-filter-svc:     # openai/privacy-filter, Apache 2.0, 1.5B params
     build: ./apps/slm-engine/privacy_filter_server
@@ -101,7 +101,7 @@ The upstream never sees the name, date, phone number, or bank account. There is 
 
 ## The detection pipeline
 
-Tokenization is not a single step. It is a nine-tier defense-in-depth pipeline that runs before every upstream call:
+Tokenization is not a single step. It is a ten-tier defense-in-depth pipeline that runs before every upstream call:
 
 | Tier | Shield | What it catches |
 |------|--------|-----------------|
@@ -113,9 +113,10 @@ Tokenization is not a single step. It is a nine-tier defense-in-depth pipeline t
 | 1.2 | Address Shield | Heuristic street address parser across EN/FR/ES/DE |
 | 1.5 | Greeting/Signature | "Regards, Jean-Pierre" and "My name is…" detection |
 | **2** | **AI NER** | **openai/privacy-filter — local token classifier, Apache 2.0** |
+| 2.5 | Boundary Artifact Cleanup | Absorbs orphaned 1-3 char residues left adjacent to tokens by SLM sub-word tokenization |
 | 3 | Structural Heuristics | Proximity expansion: `[TOKEN] ET Dupont` → re-tokenized as single entity |
 
-Tiers 0–1.5 are deterministic and require no model. Tier 2 now runs `openai/privacy-filter` — the best available open-weight PII detection model — locally, with no network call. Tier 3 catches what structural context reveals after the AI pass.
+Tiers 0–1.5 are deterministic and require no model. Tier 2 now runs `openai/privacy-filter` — the best available open-weight PII detection model — locally, with no network call. Tier 2.5 cleans up sub-word tokenization artifacts the AI pass leaves behind. Tier 3 catches what structural context reveals after that.
 
 ---
 
@@ -137,7 +138,7 @@ The token is what is logged. Never the original PII. The audit trail satisfies G
 
 Event 1 showed that the middleware is the attack surface. Event 2 showed that compliance posture does not substitute for architectural controls. Event 3 showed that the industry has concluded local-first detection is correct — but shipped a model, not a deployable system.
 
-The gap is between a detection capability and an enterprise-deployable, auditable, zero-egress data pipeline. The proxy intercepts. The refinery detects across nine tiers, with `openai/privacy-filter` now as the AI backbone. The vault encrypts under keys that never leave memory. The audit log proves every action. The upstream sees nothing it should not see.
+The gap is between a detection capability and an enterprise-deployable, auditable, zero-egress data pipeline. The proxy intercepts. The refinery detects across ten tiers, with `openai/privacy-filter` now as the AI backbone. The vault encrypts under keys that never leave memory. The audit log proves every action. The upstream sees nothing it should not see.
 
 That is the system.
 
