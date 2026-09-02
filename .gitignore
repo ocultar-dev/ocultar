@@ -58,10 +58,13 @@ demo/
 # Documentation Binaries
 *.pdf
 
-audit.log
+*audit.log*
 /sombra.yaml
 temp/
 models/privacy-filter-fr-finance/model.safetensors
+
+# Local scheduled-task lock state (per-machine/per-session, not source)
+.claude/scheduled_tasks.lock
 
 # Model files (large binaries — never commit)
 *.gguf
