@@ -6,17 +6,19 @@ This guide explains how to build and distribute OCULTAR binaries or Docker image
 
 ## 1. Build the Release
 
-The `build_release.sh` script compiles and packages the distribution in one step:
+**CI (tagged releases):** pushing a `v*.*.*` tag triggers `.github/workflows/release.yml`, which cross-compiles the refinery server and proxy for linux/amd64, darwin/arm64, and windows/amd64, generates a `SHA256SUMS-<os>-<arch>.txt` and a CycloneDX SBOM, and publishes everything as GitHub Release assets. It builds two raw binaries per platform (`ocultar-<os>-<arch>`, `ocultar-proxy-<os>-<arch>`) — no client-facing archive with a GUI installer.
+
+**Local packaging:** `tools/scripts/release.sh` builds `apps/proxy`, `services/refinery/cmd`, `services/refinery/cmd/riskreport`, `apps/sombra`, and `apps/slm-engine`, copies `configs/*.yaml` and `.env.example`, and tars the result into `ocultar-release-v<date>.tar.gz`:
 
 ```bash
-./build_release.sh
+./tools/scripts/release.sh
 ```
 
-Output in `dist/`: versioned archives for Linux, macOS, and Windows, built by the GitHub Actions `release.yml` workflow and published as GitHub Releases.
+Output in `dist/release_<date>/`, archived as `ocultar-release-v<date>.tar.gz` in the repo root.
 
 > [!NOTE]
 > OCULTAR runs all PII detection locally — local SLM-based NER, on-premise vault, zero internet required at runtime. The only external dependency is the one-time model download from HuggingFace on first run.
-> These archives are generated automatically by CI and are **not tracked in version control** to prevent "dirty" repository loops. They are intended for distribution via GitHub Releases.
+> Release artifacts (`dist/`, `*.tar.gz`) are **not tracked in version control** (`.gitignore`). Don't force-add them.
 
 ---
 
@@ -27,12 +29,10 @@ Output in `dist/`: versioned archives for Linux, macOS, and Windows, built by th
 Docker standardizes the environment: clients don't need Go, Python, or any dependency.
 
 **What to send:**
-1. The distribution archive from the GitHub Releases page
-2. `documentation/SETUP_GUIDE.md`
+1. This repo (or the release binaries from the GitHub Releases page)
+2. The Setup Guide (`apps/web/public/content/guides/SETUP_GUIDE.md`, published at `/docs/guides/SETUP_GUIDE` on the docs site)
 
-The client unzips, runs `setup.sh` (Linux/macOS) or `setup.ps1` (Windows), and opens `http://localhost:3030`.
-
-**Alternative — Docker image tarball:**
+**Docker image tarball:**
 ```bash
 docker build -t ocultar-api .
 docker save ocultar-api > ocultar_v$(date +%Y%m%d).tar
@@ -54,10 +54,14 @@ For developers or security researchers who want to run the raw binary without Do
 
 > **Note:** OCULTAR uses DuckDB (via CGO), so cross-compilation requires a C toolchain.
 
+These are the same source paths `.github/workflows/release.yml` builds — the refinery server from `./services/refinery/cmd`, the proxy from `./apps/proxy`.
+
 #### Linux (native, from a Linux machine)
 ```bash
 CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-  go build -o dist/community/ocultar ./dist/community
+  go build -o dist/ocultar-linux-amd64 ./services/refinery/cmd
+CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+  go build -o dist/ocultar-proxy-linux-amd64 ./apps/proxy
 ```
 
 #### Windows (from Linux, using mingw-w64)
@@ -66,9 +70,10 @@ CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 sudo apt-get install gcc-mingw-w64
 
 # Build:
-CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
-  CC=x86_64-w64-mingw32-gcc \
-  go build -o dist/community/ocultar.exe ./dist/community
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+  go build -o dist/ocultar-windows-amd64.exe ./services/refinery/cmd
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+  go build -o dist/ocultar-proxy-windows-amd64.exe ./apps/proxy
 ```
 
 #### macOS (Silicon / Intel)
@@ -77,7 +82,9 @@ Cross-compiling for macOS requires Apple's proprietary SDKs. Three practical opt
 1. **Build on an actual Mac** — easiest:
    ```bash
    CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
-     go build -o dist/community/ocultar-macos-arm64 ./dist/community
+     go build -o dist/ocultar-darwin-arm64 ./services/refinery/cmd
+   CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+     go build -o dist/ocultar-proxy-darwin-arm64 ./apps/proxy
    ```
 2. **GitHub Actions** — set up a macOS runner in CI/CD to produce the binary automatically
 3. **Recommend Docker** — Docker Desktop runs natively on Mac, sidestepping this entirely
@@ -90,19 +97,16 @@ The project uses a `go.work` file to manage a multi-module workspace:
 
 ```
 go.work
-├── apps/proxy       (github.com/ocultar-dev/ocultar/apps/proxy)   ← transparent proxy
+├── apps/proxy       (github.com/ocultar-dev/ocultar-proxy)        ← transparent proxy
 ├── apps/sombra      (github.com/ocultar-dev/ocultar/apps/sombra)  ← Sombra gateway
 ├── apps/slm-engine  (github.com/ocultar-dev/ocultar/apps/slm-engine)
-├── services/refinery
-├── services/vault
+├── services/refinery (github.com/ocultar-dev/ocultar)
+├── services/vault    (github.com/ocultar-dev/ocultar/vault)
 ├── internal/pii
 └── pkg/gateway
 ```
 
-To build all modules from the root during development:
-```bash
-go build ./...
-```
+There is no root `go.mod`, so `go build ./...` from the repo root fails (`directory prefix . does not contain modules listed in go.work`). Build each module individually, or use `make build`.
 
 ---
 
@@ -115,4 +119,4 @@ The `docker-compose.proxy.yml` file is the deployment unit for the proxy mode. I
 docker compose -f docker-compose.proxy.yml up -d
 ```
 
-See `docs/setup_guide.md` for the full proxy deployment guide.
+See the Setup Guide (`apps/web/public/content/guides/SETUP_GUIDE.md`) for the full proxy deployment guide.

@@ -51,7 +51,7 @@ First build takes ~5 minutes (Go + DuckDB/CGO compilation). Every subsequent sta
 | Service | Port | Role |
 |---|---|---|
 | `ocultar-proxy` | 8081 | OpenAI-compatible PII proxy (intercepts AI API calls) |
-| `ocultar-refinery` | 8080 | Refinery API + compliance evidence endpoint |
+| `ocultar-refinery` | 4141 | Refinery API + compliance evidence endpoint |
 | `echo-upstream` | 8082 | Mock AI API (reflects request back for demo purposes) |
 
 ---
@@ -98,7 +98,7 @@ No original values reach the echo upstream or any external system.
 ## Step 4 — Pull the Compliance Evidence (for your DPO)
 
 ```bash
-curl -s http://localhost:8080/api/compliance/evidence | python3 -m json.tool
+curl -s http://localhost:4141/api/compliance/evidence | python3 -m json.tool
 ```
 
 Returns a JSON snapshot with:

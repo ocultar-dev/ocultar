@@ -178,7 +178,7 @@ Latency is minimal. Tier 0 and Tier 1 (Regex/Dictionary) run at disk speed. Tier
 Yes. OCULTAR supports horizontal scaling using a PostgreSQL HA vault, allowing multiple proxy instances to share the same identity mappings.
 
 ### How does the system handle slow AI models?
-OCULTAR uses a **Fail-Closed** design for SLM scans. If the AI model (e.g., Qwen or Phi) takes longer than 5 seconds to respond, the refinery defaults to high-security mode (redacting chunks it cannot verify). We recommend using ultra-light models (< 1B parameters) and the **SLM AI Relay** for caching to maintain real-time performance.
+Every SLM call is bounded by a 9-second timeout (`services/refinery/pkg/inference/remote.go`). If the sidecar doesn't respond in time, the refinery either fails closed (blocks the request) or falls back to Tier 0/1 detection only, depending on the `FailClosedOnSLMError` setting for that call path — see the [Fail-Closed Guarantees](./ARCHITECTURE.md#8-fail-closed-guarantees) table. We recommend using ultra-light models (< 2B parameters) to stay well under the timeout.
 
 ---
 

@@ -68,7 +68,7 @@ For each detected PII match, the refinery runs:
 The proxy re-hydration layer scans upstream responses for `[TYPE_16hexchars]` patterns and replaces them with the original PII:
 
 ```
-[EMAIL_9c8f7a1b1234abcd] → vault.GetToken("9c8f7a1b1234abcd") → ciphertext
+[EMAIL_9c8f7a1b1234abcd] → vault.GetEncryptedByToken("[EMAIL_9c8f7a1b1234abcd]") → ciphertext
                   → AES-256-GCM.Decrypt(ciphertext, derivedKey)
                   → "alice@example.com"
 ```
@@ -95,7 +95,7 @@ Set `OCU_VAULT_PATH` to control where the DuckDB file is written (default: `vaul
 ```go
 import (
     "github.com/ocultar-dev/ocultar/pkg/config"
-    "github.com/ocultar-dev/ocultar/services/vault"
+    "github.com/ocultar-dev/ocultar/vault"
 )
 
 func main() {
