@@ -1,6 +1,6 @@
 module github.com/ocultar-dev/ocultar
 
-go 1.25.8
+go 1.26.0
 
 replace github.com/ocultar-dev/ocultar/internal/pii => ../../internal/pii
 
@@ -13,7 +13,7 @@ require (
 	github.com/ocultar-dev/ocultar/pkg/gateway v0.0.0-20260716110046-46d3348239b8
 	github.com/ocultar-dev/ocultar/vault v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.24.1
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	google.golang.org/grpc v1.83.2
 	gopkg.in/yaml.v3 v3.0.1
 )
