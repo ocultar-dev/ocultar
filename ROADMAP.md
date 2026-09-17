@@ -68,11 +68,14 @@ Initial public release.
 - [ ] 117/117 Tier 1 coverage (close the remaining SLM-only gap)
 - [ ] Custom entity type API: define new PII types at runtime via the entity registry
 - [ ] French-finance-tuned Tier 2 NER model — partner-driven engagement, needs 5K+ real-world labeled examples (see FAQ.md); an internal fine-tune attempt on 200 synthetic examples failed to converge (eval F1 ≈ 0.06) and was scrapped
+- [ ] Phone Tier-B's `nonPhoneContextRe` context gate runs *before* Tier A's strict `libphonenumber` check, so a provably-valid phone number near a guard keyword ("compte", "référence", etc.) gets skipped even though Tier A already confirmed it's genuine. Reorder so Tier A's match short-circuits the context check, or scope the gate to Tier B only (found 2026-09-17 fixing a WISC-V false-positive; not fixed)
+- [ ] `semanticTriggerRegex`'s "TRAITEMENT" trigger can't disambiguate French "traitement" (processing) from "traitement médical" (medical treatment) — e.g. "Vitesse de traitement" (a WISC-V subtest name, Processing Speed) gets masked as `SENSITIVE_EVENT`. Needs real disambiguation, not a keyword tweak (found 2026-09-17; not fixed)
 
 ### Resilience
 
 - [ ] Request-level timeout configuration (`OCU_REFINE_TIMEOUT`)
 - [ ] Vault compaction — prune tokens older than a configurable TTL
+- [ ] Document the expected host-supervision contract: ocultar has no self-restart capability — if the process dies (crash, OOM, killed), an embedding host (e.g. Ki!'s Tauri sidecar) must detect it and respawn a fresh instance. Found 2026-09-17 via Ki!: no such watchdog exists there today, so a dead sidecar requires a full app restart. This item is about documenting/exposing what a host needs (e.g. is `/api/health` sufficient, or is a graceful-shutdown signal needed too) — the actual watchdog logic belongs in each host, not here.
 
 ### Deployment
 

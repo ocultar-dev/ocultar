@@ -21,6 +21,7 @@ const (
 	ValIndiaAadhaar ValidationMethod = "INDIA_AADHAAR"
 	ValSingaporeID  ValidationMethod = "SG_ID"
 	ValESCIF        ValidationMethod = "ES_CIF"
+	ValBICCountry   ValidationMethod = "BIC_COUNTRY"
 )
 
 type EntityDef struct {
@@ -49,7 +50,12 @@ var Registry = []EntityDef{
 	// (e.g. "FR76 1390 6001 0083 1172 45******"). No Mod97: truncated IBANs cannot pass checksum.
 	{Type: "IBAN", Pattern: regexp.MustCompile(`(?i)(?:\bcompte\s+bancaire\b|\biban\b|\bvirement\b|\bpr[eé]lev[eé]\s+sur\b)[^A-Z0-9]{0,30}([A-Z]{2}[0-9]{2}(?:[\s-]?[A-Z0-9]{4}){2,6}(?:[\s-]?[A-Z0-9]{1,4})?(?:\s*\*+)?)`), Validator: ValNone, MinLength: 10, Normalization: false, CaptureGroup: 1},
 	{Type: "CREDIT_CARD", Pattern: regexp.MustCompile(`\b(?:4[0-9\s-]{12,19}|5[1-5][0-9\s-]{14,19}|6(?:011|5[0-9]{2})[0-9\s-]{12,19}|3[47][0-9\s-]{13,19}|3(?:0[0-5]|[68][0-9])[0-9\s-]{11,19}|(?:2131|1800|35\d{3})[0-9\s-]{11,19})\b`), Validator: ValLuhn, MinLength: 13, Normalization: true, CaptureGroup: 0},
-	{Type: "BIC", Pattern: regexp.MustCompile(`\b[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b`), Validator: ValNone, MinLength: 8, Normalization: false, CaptureGroup: 0},
+	// BIC/SWIFT has no checksum digit, so an unguarded 8-char shape matches any
+	// all-caps word/acronym (e.g. "COMPLEMENTAIRE" split at a non-ASCII boundary into
+	// "MENTAIRE" — whose chars 5-6 even coincidentally spell a real country code "AI").
+	// Mirrors the context-gated IBAN entry above: require "bic"/"swift" nearby, plus
+	// the country-code sanity check as defense-in-depth against a garbled value.
+	{Type: "BIC", Pattern: regexp.MustCompile(`(?i)\b(?:bic|swift)\b[^A-Z0-9]{0,20}([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b`), Validator: ValBICCountry, MinLength: 8, Normalization: false, CaptureGroup: 1},
 
 	// EU/UK VAT (Generic EU VAT)
 	{Type: "EU_VAT", Pattern: regexp.MustCompile(`(?i)\b(?:ATU[0-9]{8}|BE0[0-9]{9}|BG[0-9]{9,10}|CY[0-9]{8}[A-Z]|CZ[0-9]{8,10}|DE[0-9]{9}|DK[0-9]{8}|EE[0-9]{9}|EL[0-9]{9}|ES[A-Z0-9][0-9]{7}[A-Z0-9]|FI[0-9]{8}|FR[A-Z0-9]{2}[0-9]{9}|HR[0-9]{11}|HU[0-9]{8}|IE[0-9][A-Z0-9+*][0-9]{5}[A-Z]|IT[0-9]{11}|LT[0-9]{9,12}|LU[0-9]{8}|LV[0-9]{11}|MT[0-9]{8}|NL[0-9]{9}B[0-9]{2}|PL[0-9]{10}|PT[0-9]{9}|RO[0-9]{2,10}|SE[0-9]{12}|SI[0-9]{8}|SK[0-9]{10}|XI[0-9]{9})\b`), Validator: ValNone, MinLength: 6, Normalization: true},

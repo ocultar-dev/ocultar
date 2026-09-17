@@ -93,6 +93,15 @@ var yearAmountRe = regexp.MustCompile(`^(?:19|20)\d{2}[\s/]`)
 // Educational/clinical scoring terms prevent test-score tables from being misclassified.
 var nonPhoneContextRe = regexp.MustCompile(`(?i)\b(?:tva|vat|siret|siren|iban|fibre|fiber|r[eé]f[eé]rence|identifiant|abonn[eé]|account|compte|registr[ae]|rang|percentile|subtest|brut|standard|quotient|composite|[eé]chelle|s[ae]m\b|note\b|vitesse|m[eé]moire|comp[eé]tence|processus)`)
 
+// phoneContextWindowBytes bounds the lookback for nonPhoneContextRe. Multi-row score
+// tables (e.g. WISC-V index tables) repeat the identifying header only once; a window
+// too small loses that header a couple of rows in and later rows get misread as phone
+// numbers. 600 bytes covers several table rows worth of French clinical/financial
+// tables. Widening this window also widens the (pre-existing) risk that a genuine
+// phone number appearing near one of these keywords gets skipped — this is a
+// deliberate, bounded trade-off, not a free fix.
+const phoneContextWindowBytes = 600
+
 // ParseAndReplacePhonesRaw is the underlying implementation that propagates errors.
 func ParseAndReplacePhonesRaw(input string) [][]int {
 	re := regexp.MustCompile(`(?:(?:\+|00)\s*)?(\d(?:[\s\-\.()]*\d){7,16})`)
@@ -115,6 +124,14 @@ func ParseAndReplacePhonesRaw(input string) [][]int {
 	// A real phone number is never immediately followed by these patterns.
 	structuredValueSuffixRe := regexp.MustCompile(`^[;:,]\d`)
 
+	// thresholdSuffixRe matches a percentage/comparator sign immediately after the
+	// candidate (optionally through whitespace), e.g. "9.93 ≤25%", "11.38 O 3.1%"'s
+	// "11.38" is NOT covered by this (letter breaks it first) but "9.93 ≤25%" is.
+	// A real phone number is never immediately followed by %, ≤, ≥, <, or >. Unlike
+	// nonPhoneContextRe this needs no lookback window, so it carries zero risk of
+	// suppressing a genuine phone number found elsewhere in the document.
+	thresholdSuffixRe := regexp.MustCompile(`^\s*[%≤≥<>]`)
+
 	var validMatches [][]int
 	for _, match := range matches {
 		matchedStr := input[match[0]:match[1]]
@@ -133,6 +150,10 @@ func ParseAndReplacePhonesRaw(input string) [][]int {
 
 		// Skip if the match is immediately followed by a structured-value suffix.
 		if match[1] < len(input) && structuredValueSuffixRe.MatchString(input[match[1]:]) {
+			continue
+		}
+		// Skip if immediately followed by a percentage/comparator sign (score/threshold, not a phone).
+		if match[1] < len(input) && thresholdSuffixRe.MatchString(input[match[1]:]) {
 			continue
 		}
 		// Skip confidence intervals and score ranges (e.g. "93 114-127", "66 97-113").
@@ -154,7 +175,7 @@ func ParseAndReplacePhonesRaw(input string) [][]int {
 		// Shared context check: skip when surrounding text contains non-phone identifiers.
 		// Applied to BOTH Tier A and Tier B — prevents score-table rows from being masked
 		// even when libphonenumber happens to accept the digit sequence.
-		ctxStart := match[0] - 120
+		ctxStart := match[0] - phoneContextWindowBytes
 		if ctxStart < 0 {
 			ctxStart = 0
 		}
@@ -183,11 +204,11 @@ func ParseAndReplacePhonesRaw(input string) [][]int {
 
 		// Tier B: Broad "looks like a phone" fallback (Fail-Closed for placeholders)
 		// Count just the digits — any sequence of 7–15 digits with phone separators is suspicious.
-		// Guard: skip when the surrounding 60-char window contains non-phone identifiers
+		// Guard: skip when the surrounding window contains non-phone identifiers
 		// (VAT numbers, fiber references, IBAN, SIRET, subscriber IDs) to avoid misclassification.
 		digits := regexp.MustCompile(`\D`).ReplaceAllString(matchedStr, "")
 		if len(digits) >= 7 && len(digits) <= 15 && broadPhoneRegex.MatchString(strings.TrimSpace(matchedStr)) {
-			ctxStart := match[0] - 120
+			ctxStart := match[0] - phoneContextWindowBytes
 			if ctxStart < 0 {
 				ctxStart = 0
 			}
