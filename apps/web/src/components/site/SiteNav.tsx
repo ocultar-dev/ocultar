@@ -1,5 +1,6 @@
-import { Github, ArrowRight } from "lucide-react";
+import { Github, ArrowRight, Star } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useGithubStars } from "@/hooks/useGithubStars";
 
 const NAV_LINKS = [
   { label: "Platform", href: "/#platform" },
@@ -12,6 +13,7 @@ const NAV_LINKS = [
 
 export const SiteNav = () => {
   const [scrolled, setScrolled] = useState(false);
+  const stars = useGithubStars();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -60,6 +62,12 @@ export const SiteNav = () => {
           >
             <Github className="h-4 w-4" />
             GitHub
+            {stars !== null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-surface px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+                <Star className="h-3 w-3 fill-current" />
+                {stars}
+              </span>
+            )}
           </a>
           <a
             href="https://github.com/ocultar-dev/ocultar"
