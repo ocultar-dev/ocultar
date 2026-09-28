@@ -1,6 +1,4 @@
-// TODO: replace with the real Buttondown username once the account exists
-// (buttondown.com/<username> in the dashboard URL) — the form 404s until then.
-const BUTTONDOWN_USERNAME = "ocultar";
+const BUTTONDOWN_USERNAME = "he-690021";
 
 export const NewsletterForm = () => (
   <form
