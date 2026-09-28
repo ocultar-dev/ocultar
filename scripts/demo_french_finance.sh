@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # OCULTAR French Finance — PII redaction demo
 # Tests the proxy with a realistic French banking payload.
-# Runs against http://localhost:8081 (proxy) and http://localhost:8080 (refinery API).
+# Runs against http://localhost:8081 (proxy) and http://localhost:4141 (refinery API).
 
 set -e
 
 PROXY="http://localhost:8081"
-REFINERY="http://localhost:8080"
+REFINERY="http://localhost:4141"
 
 echo ""
 echo "══════════════════════════════════════════════════════════════"

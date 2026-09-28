@@ -1,6 +1,7 @@
 import { Github } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { NewsletterForm } from "./NewsletterForm";
 
 const COLS = [
   {
@@ -50,6 +51,9 @@ export const SiteFooter = () => (
           >
             <Github className="h-4 w-4" /> github.com/ocultar-dev/ocultar
           </a>
+          <div className="mt-2">
+            <NewsletterForm />
+          </div>
         </div>
         {COLS.map((c) => (
           <div key={c.title} className="flex flex-col gap-3">

@@ -13,15 +13,14 @@ OCULTAR Connectors are modular ingestion components that fetch or receive data f
 ### 2.1 Slack Workspace
 The Slack connector allows you to ingest channel history and listen for message events.
 
-**Configuration:**
-```yaml
-connectors:
-  - id: slack-main
-    type: slack
-    config:
-      workspace_id: T12345678
-      token: "xoxb-your-slack-bot-token"
+**Configuration:** there is no YAML block for this — `services/refinery/cmd/main.go` auto-starts the connector at boot if `SLACK_TOKEN` is set:
+
+```bash
+export SLACK_TOKEN="xoxb-your-slack-bot-token"
+export SLACK_WORKSPACE_ID="T12345678"
 ```
+
+Note: this is the **refinery CLI/server binary's** outbound Slack connector (used to ingest channel history). It is a separate integration from Sombra's inbound `/v1/slack/events` webhook, which verifies incoming Slack events using `SLACK_SIGNING_SECRET` instead — see `CLAUDE.md` and the [Sombra Guide](./SOMBRA_GUIDE.md).
 
 ### 2.2 Microsoft SharePoint & Teams
 The SharePoint connector ingests documents from Microsoft SharePoint via the Microsoft Graph API using OAuth2 Client Credentials. It authenticates as your Azure AD application, polls the drive for new and changed files using delta queries (incremental sync), extracts their text content, and passes everything through the Zero-Egress Refinery before any downstream use.
@@ -32,16 +31,13 @@ The SharePoint connector ingests documents from Microsoft SharePoint via the Mic
 3. Under **API permissions**, add `Sites.Read.All` (Microsoft Graph, Application type) and grant admin consent.
 4. Note the **Application (client) ID** and **Directory (tenant) ID**.
 
-**Configuration:**
-```yaml
-connectors:
-  - id: sharepoint-prod
-    type: sharepoint-graph
-    config:
-      tenant_id: "your-tenant-id"      # Azure AD Directory ID
-      client_id: "your-client-id"      # Azure AD Application ID
-      client_secret: "your-client-secret"
-      site_id: "your-site-id"          # SharePoint site ID (optional; required for Fetch)
+**Configuration:** also env-var-driven, auto-started if `MS_CLIENT_ID` is set:
+
+```bash
+export MS_TENANT_ID="your-tenant-id"      # Azure AD Directory ID
+export MS_CLIENT_ID="your-client-id"      # Azure AD Application ID
+export MS_CLIENT_SECRET="your-client-secret"
+export MS_SHAREPOINT_SITE_ID="your-site-id"  # SharePoint site ID (required for Fetch)
 ```
 
 **Supported file formats:**
@@ -63,23 +59,16 @@ connectors:
 - All extracted text is passed to `refinery.ProcessInterface` before any logging or forwarding — no raw PII ever leaves the connector.
 
 ### 2.3 Dynamic Plugins
-Custom connectors can be loaded as Go plugins (`.so` files).
-
-**Example:**
-```yaml
-connectors:
-  - id: custom-source
-    type: plugin
-    path: "/path/to/your/connector.so"
-```
+`Manager.LoadPlugin` (`services/refinery/pkg/connector/manager.go`) can load a connector from a Go plugin (`.so` file) implementing a `NewConnector() Connector` symbol. As of this writing, no binary in the repo calls `LoadPlugin` — it is library capability without a CLI flag or config path wired up to invoke it. Using it today requires calling it yourself from a fork of `services/refinery/cmd/main.go`.
 
 ## 3. Configuration
 
-Connectors are configured via environment variables (for basic usage) or via a `connectors` section in `configs/config.yaml`.
+Connectors are configured entirely through environment variables read directly by `services/refinery/cmd/main.go` at startup — there is no `connectors` section in `configs/config.yaml`; the `Settings` struct (`services/refinery/pkg/config/config.go`) has no such field.
 
 ### Environment Variables
-- `SLACK_TOKEN`: The API token for your Slack bot.
+- `SLACK_TOKEN`: The API token for your Slack bot. Setting this auto-starts the Slack connector.
 - `SLACK_WORKSPACE_ID`: Your Slack Workspace ID.
+- `MS_CLIENT_ID`, `MS_TENANT_ID`, `MS_CLIENT_SECRET`, `MS_SHAREPOINT_SITE_ID`: Azure AD credentials. Setting `MS_CLIENT_ID` auto-starts the SharePoint connector.
 
 ## 4. Zero-Egress Implementation
 

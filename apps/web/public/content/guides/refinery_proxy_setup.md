@@ -47,8 +47,14 @@ export OCU_MASTER_KEY=$(openssl rand -hex 32)
 # ⚠️  Also invalidates vault if changed after first run.
 export OCU_SALT=$(openssl rand -hex 16)
 
-# REQUIRED — Your upstream LLM API URL (the service you want to protect).
+# Your upstream LLM API URL (the service you want to protect).
 # Examples: https://api.openai.com  |  http://your-internal-llm:11434
+# NOTE: docker-compose.yml and docker-compose.proxy.yml both hardcode
+# OCU_PROXY_TARGET to the bundled echo-upstream mock (they ignore this .env
+# value) — that's intentional for the zero-config demo/smoke-test path. To
+# point at a real upstream, override the ocultar-proxy service's environment
+# in your own compose file, or run the built binary/container directly with
+# this variable set.
 export OCU_PROXY_TARGET=https://api.openai.com
 
 # OPTIONAL — Proxy listener port (default: 8081).
@@ -68,13 +74,19 @@ export OCU_PROXY_PORT=8081
 ## Phase 2: Start the Cluster (4–5 Minutes)
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-On first run the cluster will:
-1. Pull the **Qwen 1.5B Q4_K_M GGUF** model (~1.2 GB) from HuggingFace into a local volume.
-2. Boot the `llama.cpp` inference refinery (`slm-ner` container) and wait for it to pass its health check.
-3. Start the `ocultar-proxy` container with pre-flight validation of your master key and vault path.
+This starts `echo-upstream` and `ocultar-proxy` — Tier 1 (regex) detection only, no AI model download. To add Tier 2 AI NER:
+
+```bash
+# piiranha sidecar (openai/privacy-filter, downloads ~500 MB on first run)
+OCU_PILOT_MODE=0 docker compose --profile ai up -d --build
+
+# OR local Qwen1.5-1.8B via llama.cpp (no download; needs
+# models/qwen-1.5b-q4_k_m.gguf already present)
+docker compose --profile qwen up -d --build
+```
 
 Watch startup progress:
 ```bash
@@ -94,7 +106,7 @@ ocultar-proxy  | [INFO] OCULTAR proxy listening on :8081
 ## Phase 3: Validation (1 Minute)
 
 ```bash
-bash scripts/smoke_test.sh
+bash tools/scripts/scripts/smoke_test.sh
 ```
 
 Expected output:
@@ -113,9 +125,11 @@ Expected output:
 | Port | Service | Purpose |
 |---|---|---|
 | `${OCU_PROXY_PORT:-8081}` (host) | `ocultar-proxy` | Transparent PII proxy — point your app here |
-| `8085` (internal only) | `slm-ner` | Local AI inference — not exposed to host |
+| `9090` (host) | `ocultar-proxy` | Prometheus metrics |
+| `8086` (`--profile ai` only) | `privacy-filter` | Tier 2 AI NER sidecar (piiranha) |
+| `8080` (`--profile qwen` only) | `llama-qwen` | Tier 2 AI NER sidecar (local Qwen1.5-1.8B) |
 
-> The Dashboard (`/index.html`) is part of the **standalone binary** deployment, not the proxy stack. See [`ADVANCED_SETUP_GUIDE.md`](./ENTERPRISE_SETUP_GUIDE.md) for the full feature walkthrough.
+> The Dashboard (`/index.html`) is part of the **standalone binary** deployment, not the proxy stack. See [`ENTERPRISE_SETUP_GUIDE.md`](./ENTERPRISE_SETUP_GUIDE.md) for the full feature walkthrough.
 
 ---
 
@@ -125,7 +139,7 @@ Expected output:
 docker compose down
 ```
 
-Vault data is persisted in the `proxy_vault` Docker volume and survives restarts.
+Vault data is persisted in the `vault-data` Docker volume and survives restarts.
 
 To wipe everything (including the vault):
 ```bash

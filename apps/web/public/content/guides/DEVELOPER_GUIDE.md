@@ -24,42 +24,48 @@
 
 ## 1. Module Structure
 
-OCULTAR uses a **Go Workspace** (`go.work`) to manage multiple modules in a single repository:
+OCULTAR uses a **Go Workspace** (`go.work`) — there is no root `go.mod`; each module below is independently versioned and listed in `go.work`'s `use ()` block:
 
 ```
-ocultar/                          ← root — shared library (github.com/ocultar-dev/ocultar)
-├── go.mod
-├── go.work                         ← workspace definition
+ocultar/
+├── go.work                              ← workspace definition (no root go.mod)
 │
-├── pkg/                            ← all importable packages
-│   ├── config/       config.go     ← settings, regex/dict rules, fail-closed startup
-│   ├── refinery/       refinery.go     ← core redaction pipeline (RefineString, ProcessInterface)
-│   │                 phone_parser.go
-│   │                 address_parser.go
-│   ├── vault/        vault.go      ← Provider interface + factory (New)
-│   │                 duckdb_provider.go
-│   │                 postgres_provider.go
-│   ├── proxy/        proxy.go      ← HTTP reverse proxy (Handler)
-│   │                 vault.go      ← re-hydration helpers
-│   ├── reporter/                   ← HTML risk-report generation
-│   └── license/                   ← license stub (all features always enabled)
+├── apps/
+│   ├── proxy/            main.go        ← reverse-proxy entrypoint (module: ocultar-proxy)
+│   ├── slm-engine/       main.go        ← local SLM sidecar (module: .../apps/slm-engine)
+│   │                     pkg/inference/
+│   └── sombra/           main.go        ← agentic LLM gateway (module: .../apps/sombra)
 │
-├── cmd/                            ← CLI entrypoints
-│   ├── ocultar/    main.go       ← shared CLI bootstrap (not directly runnable)
-│   ├── proxy/        main.go       ← proxy-mode entrypoint
-│   └── riskreport/   main.go       ← standalone report generator
+├── services/
+│   ├── refinery/                        ← core detection/redaction engine (module: github.com/ocultar-dev/ocultar)
+│   │   ├── cmd/main/       main.go      ← Refinery CLI + `--serve` HTTP/dashboard server
+│   │   ├── cmd/riskreport/ main.go      ← standalone report generator
+│   │   ├── internal/handlers/           ← HTTP route registration
+│   │   └── pkg/
+│   │       ├── config/    config.go     ← settings, regex/dict rules, fail-closed startup
+│   │       ├── refinery/  refinery.go   ← core redaction pipeline (RefineString)
+│   │       │             phone_parser.go, address_parser.go
+│   │       ├── proxy/     proxy_handler.go ← reverse-proxy handler used by apps/proxy
+│   │       ├── audit/                   ← immutable (Ed25519 hash-chained) + basic audit loggers
+│   │       ├── inference/               ← RemoteScanner (Tier 2 SLM sidecar client)
+│   │       ├── connector/               ← Slack, SharePoint connectors
+│   │       ├── reporter/                ← HTML risk-report generation
+│   │       └── license/                 ← license stub (all features always enabled)
+│   └── vault/                           ← encrypted token storage (module: .../ocultar/vault)
+│       vault.go        ← Provider interface + factory (New)
+│       duckdb_provider.go, postgres_provider.go, entity_registry.go, retention.go
+│
+├── internal/pii/                        ← shared PII type registry (module: .../internal/pii)
+├── pkg/gateway/                         ← shared gateway client logic (module: .../pkg/gateway)
 │
 ├── configs/
-│   ├── config.yaml                 ← Runtime config (regexes, dicts, vault)
-│   └── protected_entities.json     ← Tier 0 Dictionary Shield terms (required at startup)
+│   ├── config.yaml                      ← Runtime config (regexes, dicts, vault)
+│   └── protected_entities.json          ← Tier 0 Dictionary Shield terms (required at startup)
 │
-├── scripts/                        ← Setup, smoke-test, and sync scripts
-│   ├── orchestrate.sh              ← Main DEV Orchestrator (PII tests + Sync + Release)
-│   ├── sync_cores.sh               ← Core Sync (DEV → Sombra Lab)
-│   ├── check_docs.sh               ← Documentation Link & Quality Checker
-│   └── ocu-pre-commit.sh           ← Lead Shield Git Hook
-└── documentation/                  ← All user-facing docs (you are here)
+└── scripts/                             ← dev/benchmark/release scripts, e.g. orchestrate.sh
 ```
+
+There is no top-level `pkg/config`, `pkg/refinery`, `pkg/vault`, `pkg/proxy`, `cmd/`, or `documentation/` directory — those paths were stale references to a pre-workspace layout.
 
 ### `go.work` contents
 
@@ -85,7 +91,7 @@ use (
 
 | Tool | Version | Notes |
 |---|---|---|
-| **Go** | 1.22+ | `go version` to verify |
+| **Go** | 1.25+ | `go version` to verify — `go.work` pins the workspace toolchain |
 | **GCC / CGO** | Any modern | Required — DuckDB uses CGO. `gcc --version` to verify. |
 | **Docker + Compose** | Latest | Only needed to run the proxy or full stack. |
 | **Python** | 3.9+ | Optional — only for the audit/analysis scripts in the root. |
@@ -103,16 +109,12 @@ use (
 ### Clone and Build
 
 ```bash
-# Clone
+# Clone — Sombra is part of this monorepo (apps/sombra), no separate clone needed
 git clone https://github.com/ocultar-dev/ocultar.git
 cd ocultar
 
-# (Optional) add Sombra if you need gateway development
-git clone https://github.com/Edu963/sombra.git ../sombra
-go work use ../sombra
-
-# Verify the workspace
-go build ./...
+# Verify the workspace (requires CGO — see prerequisites above)
+CGO_ENABLED=1 go build ./...
 ```
 
 ### First-Run Requirements
@@ -146,58 +148,61 @@ export SLM_SIDECAR_URL="http://localhost:8085"
 
 ## 3. Running Tests
 
-```bash
-# Run all unit tests (requires CGO + a writable tmp dir for DuckDB)
-go test ./...
+Each module is tested from its own directory (this is a multi-module workspace, not a single `go test ./...` from root):
 
-# Run a specific package
-go test ./pkg/refinery/...
-go test ./pkg/proxy/...
-go test ./pkg/vault/...
+```bash
+# Run the core suite (requires CGO_ENABLED=1 + a writable tmp dir for DuckDB)
+make test    # == CGO_ENABLED=1 go test ./internal/pii/... ./services/refinery/... ./services/vault/...
+
+# Run a specific package/module
+cd services/refinery && CGO_ENABLED=1 go test ./pkg/refinery/...
+cd services/refinery && CGO_ENABLED=1 go test ./pkg/proxy/...
+cd services/vault && CGO_ENABLED=1 go test ./...
+cd apps/proxy && CGO_ENABLED=1 go test ./...
 
 # Run with race detector (recommended for proxy/refinery concurrency tests)
-go test -race ./...
+cd services/refinery && CGO_ENABLED=1 go test -race ./...
 
 # Run fail-closed proxy tests specifically
-go test -v ./pkg/proxy/ -run TestFailClosed
+cd services/refinery && CGO_ENABLED=1 go test -v ./pkg/proxy/ -run TestFailClosed
 
-# Run with verbose output and coverage
-go test -v -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
+# Run a single test by name
+cd services/refinery && CGO_ENABLED=1 go test ./... -run TestName
 ```
 
 ### Key Test Files
 
 | File | What it covers |
 |---|---|
-| `pkg/refinery/refinery_test.go` | Core redaction correctness (email, phone, IBAN, address, base64, nested JSON) |
-| `pkg/refinery/phone_parser_test.go` | International phone number parsing edge cases |
-| `pkg/refinery/address_parser_test.go` | European/LATAM address heuristics |
-| `pkg/proxy/proxy_test.go` | End-to-end proxy redaction with a mock upstream |
-| `pkg/proxy/fail_closed_test.go` | Ensures refinery errors return 4xx/5xx and never forward un-redacted data |
-| `pkg/vault/vault_test.go` | StoreToken idempotency, GetToken lookup, CountAll |
+| `services/refinery/pkg/refinery/refinery_test.go` | Core redaction correctness (email, phone, IBAN, address, base64, nested JSON) |
+| `services/refinery/pkg/refinery/phone_parser_test.go` | International phone number parsing edge cases |
+| `services/refinery/pkg/refinery/address_parser_test.go` | European/LATAM address heuristics |
+| `services/refinery/pkg/proxy/proxy_test.go` | End-to-end proxy redaction with a mock upstream |
+| `services/refinery/pkg/proxy/fail_closed_test.go` | Ensures refinery errors return 4xx/5xx and never forward un-redacted data |
+| `services/vault/vault_test.go` | StoreToken idempotency, GetToken lookup, CountAll |
 
 ---
 
 ## 4. Package Overview
 
 ```
-pkg/config   ──► loaded once at startup ──► pkg/refinery reads config.Global
-                                        ──► pkg/vault reads cfg.VaultBackend
-pkg/vault    ──► Provider interface ──► duckdbProvider (default)
-                                   ──► postgresProvider
-pkg/refinery   ──► RefineString / ProcessInterface
-             ──► depends on: pkg/config, pkg/vault, pkg/license
-             ──► optional: AuditLogger, AIScanner (injected post-construction)
-pkg/proxy    ──► http.Handler wrapping pkg/refinery
-             ──► depends on: pkg/refinery, pkg/vault
+services/refinery/pkg/config   ──► loaded once at startup ──► pkg/refinery reads config.Global
+                                                          ──► services/vault reads cfg.VaultBackend
+services/vault                 ──► Provider interface ──► duckdbProvider (default)
+                                                     ──► postgresProvider
+services/refinery/pkg/refinery ──► RefineString / ProcessInterface
+                                ──► depends on: pkg/config, services/vault, pkg/license
+                                ──► optional: AuditLogger, AIScanner (injected post-construction)
+services/refinery/pkg/proxy    ──► http.Handler wrapping pkg/refinery
+                                ──► depends on: pkg/refinery, services/vault
+apps/proxy                     ──► thin entrypoint that constructs and runs services/refinery/pkg/proxy's Handler
 ```
 
 **Dependency rules (enforced by import graph):**
 - `pkg/config` has **zero** internal dependencies (it only uses stdlib).
-- `pkg/vault` depends on `pkg/config` and `pkg/license` — never on `pkg/refinery`.
-- `pkg/refinery` depends on `pkg/config`, `pkg/vault`, `pkg/license` — never on `pkg/proxy`.
-- `pkg/proxy` sits at the top of the stack; it may import `pkg/refinery` and `pkg/vault`.
+- `services/vault` depends on `pkg/config` and `pkg/license` — never on `pkg/refinery`.
+- `pkg/refinery` depends on `pkg/config`, `services/vault`, `pkg/license` — never on `pkg/proxy`.
+- `pkg/proxy` sits at the top of the refinery stack; it may import `pkg/refinery` and `services/vault`. `apps/proxy` (the deployable binary) sits above that again.
 
 ---
 
@@ -227,7 +232,7 @@ Restart the binary. Changes take effect at next startup (no recompilation).
 
 ### 5.2 Adding a New Detection Tier (code)
 
-To add a new Tier inside `RefineString` in `pkg/refinery/refinery.go`:
+To add a new Tier inside `RefineString` in `services/refinery/pkg/refinery/refinery.go`:
 
 1. **Write a parser function** following the existing pattern:
    ```go
@@ -254,7 +259,7 @@ To add a new Tier inside `RefineString` in `pkg/refinery/refinery.go`:
 
 ### 5.3 Adding a Vault Backend
 
-1. Create `pkg/vault/my_provider.go` implementing the `Provider` interface:
+1. Create `services/vault/my_provider.go` implementing the `Provider` interface:
    ```go
    type myProvider struct { /* ... */ }
 
@@ -264,7 +269,7 @@ To add a new Tier inside `RefineString` in `pkg/refinery/refinery.go`:
    func (p *myProvider) Close() error                                                { ... }
    ```
 
-2. Add a new `case` to the `New()` factory in `pkg/vault/vault.go`:
+2. Add a new `case` to the `New()` factory in `services/vault/vault.go`:
    ```go
    case "mybackend":
        return newMyProvider(cfg.MyDSN)
@@ -272,7 +277,7 @@ To add a new Tier inside `RefineString` in `pkg/refinery/refinery.go`:
 
 3. Add a `MyDSN string \`yaml:"my_dsn"\`` field to `config.Settings`.
 
-4. Add test coverage in `pkg/vault/vault_test.go`.
+4. Add test coverage in `services/vault/vault_test.go`.
 
 ---
 
@@ -284,7 +289,7 @@ You can import the refinery directly into your own Go service:
 import (
     "github.com/ocultar-dev/ocultar/pkg/config"
     "github.com/ocultar-dev/ocultar/pkg/refinery"
-    "github.com/ocultar-dev/ocultar/pkg/vault"
+    "github.com/ocultar-dev/ocultar/vault"
     "crypto/sha256"
 )
 
@@ -305,7 +310,10 @@ func main() {
     defer v.Close()
 
     // 4. Construct the refinery
-    eng := refinery.NewRefinery(v, masterKey)
+    eng, err := refinery.NewRefinery(v, masterKey)
+    if err != nil {
+        panic(err)
+    }
 
     // 5. Refine a string
     refined, err := eng.RefineString("Call me at john@example.com", "system", nil)
@@ -316,6 +324,8 @@ func main() {
     fmt.Println(refined)
 }
 ```
+
+Note: `github.com/ocultar-dev/ocultar/pkg/config` and `.../pkg/refinery` resolve inside the `services/refinery` module, whose module path is `github.com/ocultar-dev/ocultar`. The vault is a **separate module** (`services/vault`, module path `github.com/ocultar-dev/ocultar/vault` — no `/pkg/` segment).
 
 > Add `github.com/ocultar-dev/ocultar` to your `go.mod`:
 > ```bash
@@ -363,35 +373,28 @@ The orchestrator executes the following functional gates located in `tools/scrip
 
 ---
 
-## 9. Tier 2 SLM Engine Selection
+## 9. Tier 2 NER Adapter Selection
 
-OCULTAR routes Tier 2 AI NER scans to the `slm-engine` sidecar over HTTP (`SLM_SIDECAR_URL`). The sidecar is engine-agnostic — its internal backend is selected at startup via `SLM_ENGINE`.
+OCULTAR routes Tier 2 AI NER scans to a sidecar over HTTP (`SLM_SIDECAR_URL`). The protocol used to talk to that sidecar is selected via `SLM_ADAPTER` (`TIER2_ENGINE` is a deprecated alias — still read, but logs a `[DEPRECATED]` warning).
 
 ### Architecture
 
 ```
-Refinery → RemoteScanner (HTTP) → slm-engine sidecar → inference backend
+Refinery → RemoteScanner (HTTP, services/refinery/pkg/inference/remote.go) → sidecar → inference backend
 ```
 
-The refinery (`services/refinery/pkg/inference/remote.go`) is fully decoupled from the inference backend. Only the sidecar changes between engines.
+The refinery's `RemoteScanner` is decoupled from the inference backend behind the sidecar's HTTP contract.
 
-### Supported Engines
+### Supported Adapters (`SLM_ADAPTER`)
 
-| `SLM_ENGINE` | Backend | CGO required | Model env var |
+| Value | Sidecar | What runs the model | Model source |
 |---|---|---|---|
-| `llama` (default) | llama.cpp native CGO | Yes | `SLM_MODEL_PATH` |
-| `privacy-filter` | `openai/privacy-filter` via Python service | No | `PYTHON_SIDECAR_URL` / `PRIVACY_FILTER_MODEL_PATH` |
+| `privacy-filter` (default, or unset) | `apps/slm-engine` (Go, no CGO) → separate Python HF service | `openai/privacy-filter` token classifier via HuggingFace Transformers (Python, `scripts/serve_privacy_filter.py`) | `PRIVACY_FILTER_MODEL_PATH` |
+| `openai-chat` | none — refinery talks directly to an OpenAI-chat-compatible endpoint | e.g. the `llama-qwen` service in `docker-compose.yml` (`ghcr.io/ggml-org/llama.cpp:server`, prebuilt image — not a Go CGO build) | model baked into that server's own image/args |
 
-### Engine: llama (default)
+`apps/slm-engine` itself only implements `privacy-filter` — passing any other `SLM_ADAPTER` to it fails startup with `unsupported SLM_ADAPTER`. `openai-chat` is handled by the refinery/proxy directly against `SLM_SIDECAR_URL`, bypassing `apps/slm-engine` entirely.
 
-```bash
-export SLM_ENGINE=llama
-export SLM_MODEL_PATH=models/qwen-1.5b-q4_k_m.gguf
-```
-
-Build requirements: `llama.cpp` headers and `libllama.a` in the library path. Optimized for Qwen 1.5B Q4_K_M GGUF (~1.2 GB VRAM); any GGUF-format model is compatible. A 5-second inference timeout is enforced via `llama_set_abort_callback`.
-
-### Engine: privacy-filter
+### Adapter: privacy-filter (default)
 
 `openai/privacy-filter` is a bidirectional token classifier (Apache 2.0, ~1.5B params). Because it is Python-native (HuggingFace Transformers), run it as a separate Python service using the provided Dockerfile or script, and point the sidecar at it:
 
@@ -401,8 +404,8 @@ pip install -r apps/slm-engine/python/requirements.txt
 export PRIVACY_FILTER_MODEL_PATH=openai/privacy-filter # Or a local fine-tuned model path
 python scripts/serve_privacy_filter.py   # listens on :8086
 
-# Start the Go sidecar pointing at it
-export SLM_ENGINE=privacy-filter
+# Start the Go sidecar pointing at it (SLM_ADAPTER=privacy-filter is the default, shown here for clarity)
+export SLM_ADAPTER=privacy-filter
 export PYTHON_SIDECAR_URL=http://localhost:8086
 go run ./apps/slm-engine
 ```
@@ -417,29 +420,27 @@ No CGO required for the Go sidecar in this mode. The Python service must expose 
 
 Before opening a PR:
 
+This is a Go workspace (no root `go.mod`) — `go test`/`go build`/`go vet` with a bare `./...` fail from repo root (`directory prefix . does not contain modules listed in go.work`). Run them per-module, or via `make`:
+
 ```bash
-# 1. All tests pass with race detector
-go test -race ./...
+# 1. All tests pass (make test covers internal/pii, services/refinery, services/vault)
+make test
+cd services/refinery && CGO_ENABLED=1 go test -race ./...
+cd apps/proxy && CGO_ENABLED=1 go test -race ./...
 
-# 2. No compilation errors across the workspace
-go build ./...
+# 2. No compilation errors
+make build
 
-# 3. Vet clean
-go vet ./...
+# 3. Vet clean (per module)
+cd services/refinery && go vet ./...
+cd apps/proxy && go vet ./...
 
 # 4. Doc links valid
-bash scripts/check_docs.sh
-
-# 5. Full Orchestration Scan (PII Tests + Cross-Version Sync + Release Build)
-# This is the mandatory "Source of Truth" sync before any release.
-bash scripts/orchestrate.sh
-
-> [!IMPORTANT]
-> **Git Tracking:** The `orchestrate.sh` script generates binary artifacts in `dist/`. These are specifically **excluded from Git tracking** in `.gitignore`. Do not attempt to force-add them, as it will cause an infinite "Modified" loop during commits.
+bash tools/scripts/scripts/check_docs.sh
 
 # 5. Smoke test passes (requires Docker)
 docker compose -f docker-compose.proxy.yml up -d
-bash scripts/smoke_test.sh
+bash tools/scripts/scripts/smoke_test.sh
 docker compose -f docker-compose.proxy.yml down
 ```
 
@@ -448,5 +449,3 @@ docker compose -f docker-compose.proxy.yml down
 - New vault backends must implement all 4 `Provider` methods with test coverage.
 - Changes to `RefineString`'s tier order must include a comment explaining the security rationale.
 - Secrets must never appear in test fixtures — use placeholder-only test strings.
-- **Agentic Audit**: Must pass the complete 16-step orchestrator sequence.
-- **Impact Summary**: PR description should include the output from `change-impact-visualizer`.

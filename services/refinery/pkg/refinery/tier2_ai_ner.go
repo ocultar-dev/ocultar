@@ -31,6 +31,31 @@ func isBlockedSLMLabel(item string) bool {
 	return false
 }
 
+// stripBoundaryBlockedLabel removes a single leading or trailing structural-label
+// word (e.g. "Date", "Total") from a multi-word SLM detection. Column-adjacent PDF
+// text with no punctuation between a value and the next field's label (e.g. "Dylan
+// Kherrab Date" immediately before "d'administration") can make the SLM over-extend
+// an entity span to swallow that label. isBlockedSLMLabel alone can't catch this
+// because the offending word is only a FRAGMENT of the detected string, not the
+// whole thing. Only one boundary word is ever stripped, so a genuine multi-word
+// name is never touched beyond its actual edge.
+func stripBoundaryBlockedLabel(item string) string {
+	words := strings.Fields(item)
+	if len(words) < 2 {
+		return item
+	}
+	const trimChars = ".,;:()«»\"'"
+	last := strings.ToLower(strings.Trim(words[len(words)-1], trimChars))
+	if _, ok := slmLabelBlocklist[last]; ok {
+		return strings.TrimSpace(strings.Join(words[:len(words)-1], " "))
+	}
+	first := strings.ToLower(strings.Trim(words[0], trimChars))
+	if _, ok := slmLabelBlocklist[first]; ok {
+		return strings.TrimSpace(strings.Join(words[1:], " "))
+	}
+	return item
+}
+
 // tier2AINer runs the SLM NER scan (Mandatory Phase). When preScanMap is
 // non-nil (the request body was already pre-scanned upstream), it replays
 // those pre-computed hits instead of calling the live scanner. Otherwise it
@@ -47,6 +72,10 @@ func tier2AINer(e *Refinery, refined, actor string, preScanMap map[string][]stri
 			for _, item := range items {
 				trimmed := strings.TrimSpace(item)
 				if len(trimmed) < 3 || !strings.Contains(refined, trimmed) {
+					continue
+				}
+				trimmed = stripBoundaryBlockedLabel(trimmed)
+				if len(trimmed) < 3 {
 					continue
 				}
 				if isBlockedSLMLabel(trimmed) {
@@ -83,6 +112,10 @@ func tier2AINer(e *Refinery, refined, actor string, preScanMap map[string][]stri
 			}
 			for _, item := range items {
 				trimmed := strings.TrimSpace(item)
+				if len(trimmed) < 3 {
+					continue
+				}
+				trimmed = stripBoundaryBlockedLabel(trimmed)
 				if len(trimmed) < 3 {
 					continue
 				}

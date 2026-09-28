@@ -615,8 +615,8 @@ john@example.com,John Smith
 **Response `200 OK`:** `application/octet-stream` — the refined file, streamed line-by-line.
 
 ```bash
-# Usage example
-curl -F "file=@my_data.csv" http://localhost:9090/api/refine/file > cleaned.csv
+# Usage example (assumes the refinery server was started with --serve 4141)
+curl -F "file=@my_data.csv" http://localhost:4141/api/refine/file > cleaned.csv
 ```
 
 ---
@@ -805,7 +805,7 @@ Client POST ──► [5 MB cap] ──► obfuscation check
 | `[vault] vault_backend is 'postgres' but postgres_dsn is not set` | Missing `postgres_dsn` in `config.yaml`. |
 ## 9. Sombra Gateway Configuration
 
-The Sombra Gateway (`github.com/Edu963/sombra`) adds an extra layer of policy enforcement on top of the OCULTAR refinery.
+The Sombra Gateway (`apps/sombra` in this repo, `github.com/ocultar-dev/ocultar`) adds an extra layer of policy enforcement on top of the OCULTAR refinery.
 
 ### Connector Policy
 

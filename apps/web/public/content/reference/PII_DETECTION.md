@@ -17,7 +17,7 @@ The Refinery operates on a multi-tier defense-in-depth model:
 | **Tier 1.1** | Phone Shield | libphonenumber validation for international and localized formats. Runs after Tier 1 to avoid misidentifying digit sequences already claimed by national IDs. | `"phone"` |
 | **Tier 1.2** | Address Shield | Heuristic street address parser supporting EN/FR/ES/DE formats. | `"address"` |
 | **Tier 1.5** | Greeting/Signature Shield | Extracts names from salutations (`"Regards, Jean"`) and self-introductions (`"My name is..."`). | `"greeting"` |
-| **Tier 2** | AI Semantic Scan | Contextual NER via a pluggable Python sidecar. Default model: `openai/privacy-filter` (bidirectional token classifier, Apache 2.0). `piiranha-v1` is supported as a multilingual alternative for mixed-language corpora. Activated via `TIER2_ENGINE=privacy-filter` and `--profile ai` in Docker Compose. | `"ai-ner"` |
+| **Tier 2** | AI Semantic Scan | Contextual NER via a pluggable Python sidecar. Default model: `openai/privacy-filter` (bidirectional token classifier, Apache 2.0). `piiranha-v1` is supported as a multilingual alternative for mixed-language corpora. Activated via `SLM_ADAPTER=privacy-filter` and `--profile ai` in Docker Compose (`TIER2_ENGINE` is a deprecated alias). | `"ai-ner"` |
 | **Tier 3** | Structural Heuristics | Context-aware proximity rules and entity expansion (professional titles, possessives, conjunction linkage). | `"structural"` |
 
 The `method` tag appears in each `DetectionResult.method` field returned by `/api/refine` and displayed in the **Detection Attribution** panel of the dashboard. It tells you exactly which pipeline tier caught each entity.
@@ -84,7 +84,7 @@ For enterprise compliance parity, OCULTAR internal types are mapped to **Google 
 
 OCULTAR uses **deterministic pseudonymization** via two complementary token paths:
 
-- **Same Input = Same Token (hash path)**: For structural identifiers (EMAIL, SSN, PHONE, IBAN, etc.), the token is `[TYPE_sha256[:8]]`. The same value always produces the same token — across requests, sessions, and documents. Relational integrity is fully preserved in tokenized datasets.
+- **Same Input = Same Token (hash path)**: For structural identifiers (EMAIL, SSN, PHONE, IBAN, etc.), the token is `[TYPE_sha256[:16]]` — the first 16 hex characters of the full HMAC-SHA256 digest. The same value always produces the same token — across requests, sessions, and documents. Relational integrity is fully preserved in tokenized datasets.
 - **Canonical entity tokens (registry path)**: For PERSON-class entities registered in the Entity Registry, all known name variants (`"John"`, `"Doe"`, `"John Doe"`, `"J. Doe"`) resolve to a single **numeric token** (`[PERSON_1]`). This prevents token fragmentation — two mentions of the same person in the same document always receive the same token even if the name appears in different forms.
 - **Irreversible without the Vault**: Hash tokens contain no original data. Reversal requires both the **Identity Vault** (DuckDB/PostgreSQL) and the **Master Key** — neither of which ever leaves your infrastructure. Entity tokens rehydrate directly from `canonical_name` in the `canonical_entities` table — no decryption needed.
 
@@ -120,7 +120,7 @@ Every policy update in OCULTAR goes through the **Validation-First DAG**:
 ## 6. Performance & SLA
 
 The Tier 2 AI Scan implements deterministic SLA enforcement:
-- **Thirty-Second Timeout**: Every AI scan is bounded by a strict 30-second `http.Client` timeout (hardcoded in `inference/remote.go`). Configurable at the application level via `inference_timeout` in `config.yaml` (currently advisory only).
+- **Nine-Second Timeout**: Every AI scan is bounded by a 9-second `context.Context` deadline per call (`services/refinery/pkg/inference/remote.go`), inside a 10-second `http.Client` timeout ceiling. Configurable at the application level via `inference_timeout` in `config.yaml` (currently advisory only).
 - **Fail-Closed Strategy**: If the scan exceeds this budget or the sidecar is unreachable, the request fails with a security error, preventing un-scanned data from being processed.
 - **Session Cache**: Results are stored in a thread-safe `sync.Map` keyed by the original input string. Repeat scans within the same request session are sub-millisecond and bypass the network.
 - **Single-Pass Batch Scan**: For complex JSON records, the SLM is called once per record (not per string field) to reduce round-trips and preserve relational token integrity.

@@ -35,7 +35,7 @@ const SECTIONS = [
       { label: "FAQ", path: "reference/FAQ" },
       { label: "Product Context", path: "reference/PRODUCT_CONTEXT" },
       { label: "EU Sovereign Pack", path: "reference/EU_SOVEREIGN_PACK_V1" },
-      { label: "Training Program", path: "reference/TRAINING_PROGRAM" },
+      { label: "Onboarding Guide", path: "reference/ONBOARDING_GUIDE" },
     ],
   },
   {
@@ -51,12 +51,6 @@ const SECTIONS = [
     items: [
       { label: "OCULTAR is fully open source now", path: "blog/going-fully-open-source" },
       { label: "Zero-Egress Supply Chain", path: "blog/zero-egress-supply-chain" },
-    ],
-  },
-  {
-    label: "Other",
-    items: [
-      { label: "Secret Management", path: "SECRETS" },
     ],
   },
 ];

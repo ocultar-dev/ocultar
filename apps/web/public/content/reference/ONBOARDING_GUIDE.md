@@ -53,7 +53,7 @@ Data/Prompt → Sombra/Proxy → Tier 0/1/2 Redaction → Encrypted Vault Storag
 ## 4. Installation and Setup
 
 ### Local Installation
-*Prerequisites: Go 1.22+ with CGO enabled (GCC required for DuckDB).*
+*Prerequisites: Go 1.25+ with CGO enabled (GCC/clang required for DuckDB and libphonenumber).*
 1. **Clone the Repo:** 
    ```bash
    git clone https://github.com/ocultar-dev/ocultar.git
@@ -66,26 +66,25 @@ Data/Prompt → Sombra/Proxy → Tier 0/1/2 Redaction → Encrypted Vault Storag
    ```
 4. **Start the Proxy:**
    ```bash
-   go run ./cmd/proxy
+   go run ./apps/proxy
    ```
+   Listens on `:8081` by default (`OCU_PROXY_PORT`).
 
 ### Running the Full Stack (Docker)
-For a complete environment test including the Database and Dashboard:
+For a proxy + echo-upstream test environment:
 ```bash
 docker compose -f docker-compose.proxy.yml up -d
 ```
-You can access the Dashboard at `http://localhost:8080` (or the port defined in your `.env`).
+This starts `ocultar-proxy` on `http://localhost:8081`. It does not start a dashboard — `apps/dashboard` is a separate, internal/private component and isn't part of this compose file.
 
 ### Setting up Sombra Gateway
-1. Clone Sombra alongside Ocultar:
+Sombra (`apps/sombra`) already lives in this repo's Go workspace (`go.work`) — no separate clone needed.
+1. Configure `sombra.yaml` with your `OPENAI_API_KEY` or `GEMINI_API_KEY`.
+2. Start Sombra:
    ```bash
-   cd ..
-   git clone https://github.com/Edu963/sombra.git
-   cd ocultar
-   go work use ../sombra
+   go run ./apps/sombra
    ```
-2. Configure `sombra.yaml` with your `OPENAI_API_KEY` or `GEMINI_API_KEY`.
-3. Start Sombra (runs on port 8081 by default).
+   Runs on port `8086` by default.
 
 ---
 
@@ -95,13 +94,13 @@ You can access the Dashboard at `http://localhost:8080` (or the port defined in 
 1. Ensure the OCULTAR Proxy is running.
 2. Send a request with your personal phone number and email:
    ```bash
-   # For Local Developer Proxy (port 8080)
-   curl -X POST http://localhost:8080/v1/chat/completions \
+   # OCULTAR Proxy (port 8081)
+   curl -X POST http://localhost:8081/v1/chat/completions \
      -H "Content-Type: application/json" \
      -d '{"messages": [{"role": "user", "content": "My email is eduardo@test.com and phone is +33 6 12 34 56 78."}]}'
 
-   # For Refinery HTTP server testing (port 8080)
-   curl -X POST http://localhost:8080/api/refine \
+   # Refinery HTTP server (started with --serve 4141)
+   curl -X POST http://localhost:4141/api/refine \
      -d '{"messages": [{"role": "user", "content": "My email is eduardo@test.com and phone is +33 6 12 34 56 78."}]}'
    ```
 3. Look at your proxy console logs: You will see OCULTAR redacting the data into `[EMAIL_...]` and `[PHONE_...]` tokens before passing it upstream.
@@ -110,7 +109,7 @@ You can access the Dashboard at `http://localhost:8080` (or the port defined in 
 1. Ensure Sombra Gateway is running.
 2. Route a request explicitly to OpenAI, then to Gemini:
    ```bash
-   curl -X POST http://localhost:8081/query \
+   curl -X POST http://localhost:8086/query \
      -F "connector=file" \
      -F "model=gpt-4o" \
      -F "prompt=Analyse these transactions." \
@@ -142,7 +141,7 @@ You can access the Dashboard at `http://localhost:8080` (or the port defined in 
 
 **Sombra Error: "ai model request failed: local: HTTP 404"**
 *Cause:* Sombra is attempting to route the scrubbed prompt to the Local AI model, but the `endpoint` configured in `sombra.yaml` doesn't exist or isn't serving an LLM API. 
-*Fix:* Check `configs/sombra.yaml` and verify the `endpoint` for your `local` provider. It should point to the port of your actual LLM (e.g., `http://localhost:8080` for llama.cpp), *not* the OCULTAR API port (9090).
+*Fix:* Verify the `endpoint` for your `local` provider. It should point to the port of your actual LLM (e.g., `http://localhost:8080` for llama.cpp), *not* the OCULTAR Proxy port (`8081`) or Refinery API port.
 
 **Sombra Error: "gemini: HTTP 404 ... is not found"**
 *Cause:* The Google Gemini API requires specific model names that may differ from their marketing names. If you request an invalid model name, Google returns a 404.

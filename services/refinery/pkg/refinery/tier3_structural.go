@@ -78,14 +78,29 @@ func (e *Refinery) applyStructuralHeuristics(input string, actor string) (string
 			}
 
 			firstWord := words[0]
+			// strings.Fields treats a newline as just another space, so without this
+			// check the expansion happily jumps across a blank line and merges the
+			// entity with the NEXT paragraph's first capitalized word (e.g. a name at
+			// the end of a page footer swallowing "Copyright" from the boilerplate two
+			// lines down). A real multi-word name or "[TOKEN] ET SURNAME" conjunction
+			// always sits on the same physical line, so any newline in the gap means
+			// this is a different, unrelated line — stop instead of expanding into it.
+			if strings.Contains(remaining[:strings.Index(remaining, firstWord)], "\n") {
+				break
+			}
 			expandedThisTurn := false
 
 			// Case A: Conjunction linkage (e.g. [TOKEN] ET MULLER)
-			if conjunctionRegex.MatchString(firstWord) && len(words) > 1 && capitalizedWordRegex.MatchString(words[1]) {
+			if conjunctionRegex.MatchString(firstWord) && len(words) > 1 && capitalizedWordRegex.MatchString(words[1]) && !isBlockedSLMLabel(words[1]) {
 				lookaheadEnd += strings.Index(remaining, words[1]) + len(words[1])
 				expandedThisTurn = true
-			} else if capitalizedWordRegex.MatchString(firstWord) || possessiveRegex.MatchString(firstWord) {
-				// Case B: Direct surname proximity or possessive
+			} else if (capitalizedWordRegex.MatchString(firstWord) || possessiveRegex.MatchString(firstWord)) && !isBlockedSLMLabel(firstWord) {
+				// Case B: Direct surname proximity or possessive. Structural labels
+				// (Date, Note, Total...) are capitalized just like a real surname when
+				// they sit right after a name with no punctuation between them (e.g.
+				// flattened PDF form layout: "Dylan Kherrab Date d'administration") —
+				// without this guard the label gets swallowed into the entity span and
+				// disappears from the output instead of staying as visible structure.
 				lookaheadEnd += strings.Index(remaining, firstWord) + len(firstWord)
 				expandedThisTurn = true
 			}

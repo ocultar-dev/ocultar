@@ -22,7 +22,7 @@ First build takes ~5 minutes (compiling Go + DuckDB/CGO). Every subsequent start
 |---------|-----|--------------|
 | `ocultar-proxy` | http://localhost:8081 | PII detection + redaction proxy |
 | `echo-upstream` | http://localhost:8082 | Mock AI API (reflects the request back) |
-| Prometheus metrics | http://localhost:9090/metrics | Live tier hit rates, latency, vault size |
+| Prometheus metrics | http://localhost:9090/metrics | Live tier detection counts and per-tier latency (`ocultar_refinery_detections_total`, `ocultar_refinery_tier_duration_seconds`) |
 
 **Test it:**
 
@@ -60,14 +60,16 @@ docker compose up --build
 Open a terminal in the `ocultar/` folder and run:
 
 ```bash
-./build_release.sh
+./tools/scripts/release.sh
 ```
 
-This compiles and packages the distribution archive into `dist/`.
+This builds `apps/proxy`, `services/refinery/cmd` (the `--serve` dashboard/API binary), `services/refinery/cmd/riskreport`, `apps/sombra`, and `apps/slm-engine`, copies `configs/*.yaml` and `.env.example`, and tars the result into `ocultar-release-v<date>.tar.gz` in the repo root.
+
+Alternatively, GitHub Actions' `release.yml` builds cross-platform binaries automatically on any `v*.*.*` tag push and attaches them to the GitHub Release.
 
 ### Step 2 — Send the package
 
-Send the distribution archive to your client.
+Send the archive (or the GitHub Release binaries) to your client, along with this guide.
 
 ---
 
@@ -75,39 +77,35 @@ Send the distribution archive to your client.
 
 **Your Goal:** Start OCULTAR on your computer (Windows, Mac, or Linux) and test it.
 
-OCULTAR is delivered as a Docker container — it requires zero programming knowledge and does not connect to the internet.
+The easiest path is Docker — see **Quick Start** at the top of this guide (`docker compose up --build`), which requires no Go toolchain and no manual key setup beyond `.env`.
+
+To run a downloaded binary directly instead:
 
 ### Prerequisites
 
-You need **Docker Desktop** installed:
-- **Download here:** [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
-- Install it like any normal application and open it (look for the whale icon in your system tray or menu bar).
+- The `ocultar` (or `ocultar-<os>-<arch>`) binary for your platform, from the release archive.
+- `configs/protected_entities.json` and `configs/config.yaml` alongside the binary (fail-closed startup aborts if the dictionary file is missing).
+- `OCU_MASTER_KEY` and `OCU_SALT` set to real values — see the Security note in Quick Start above.
 
-### Step 1 — Unzip the application
+### Step 1 — Extract the archive
 
-Extract the distribution archive to your Desktop. Open the extracted folder.
+Extract the distribution archive and open the extracted folder in a terminal.
 
-### Step 2 — Run the setup launcher
+### Step 2 — Set your keys and start the dashboard/API server
 
-Inside the folder, open the `scripts/` folder and run the launcher for your system.
+```bash
+export OCU_MASTER_KEY="$(openssl rand -hex 32)"
+export OCU_SALT="$(openssl rand -hex 16)"
+./ocultar --serve 3030
+```
 
-**Windows:**
-1. Right-click `scripts\setup.ps1`
-2. Select **Run with PowerShell**
-3. If a blue box pops up saying "Windows protected your PC", click **More info** then **Run anyway**. If prompted about execution policy, type `Y` and press Enter.
-4. The script automatically generates your encryption keys and starts the refinery.
-
-**Mac / Linux:**
-1. Open your Terminal.
-2. Drag and drop `scripts/setup.sh` into the Terminal and press **Enter**.
-
-> **First run note:** The setup pulls a local AI model (~1.2 GB) and builds the local binary. This takes a few minutes once. Every subsequent run starts instantly.
+> **First run note:** If Tier 2 AI NER is enabled, the sidecar pulls its model on first run — see the Tier 2 sections above. The `--serve` binary itself starts instantly.
 
 ### Step 3 — Open the Dashboard
 
-Once setup completes, open your web browser and go to:
+Once the server is running, open your web browser and go to:
 
-👉 **http://localhost:3030**
+👉 **http://localhost:3030/index.html**
 
 You should see the OCULTAR Live Dashboard with the input panel on the left.
 
@@ -199,13 +197,13 @@ This safely stops all containers and frees resources.
 
 | Symptom | Fix |
 |---|---|
-| Browser shows nothing at `localhost:3030` | Ensure Docker Desktop is running. Wait 30 seconds after setup, then refresh. |
-| Dashboard loads but refinement fails | Check that the local AI container started: `docker compose logs ocultar-ai` |
-| Windows PowerShell script blocked | Open PowerShell as Administrator, run `Set-ExecutionPolicy RemoteSigned`, then retry. |
+| Browser shows nothing at `localhost:3030` | Confirm the `--serve 3030` process is still running and check its terminal output for a fatal startup error (e.g. missing `configs/protected_entities.json`). |
+| Dashboard loads but refinement fails | If Tier 2 AI NER is enabled, check the sidecar's logs (`docker compose logs privacy-filter` for the Docker path). |
+
 ### SharePoint Connector Environment Variables
 
 - `MS_TENANT_ID`: Microsoft Entra (Azure AD) Tenant ID.
 - `MS_CLIENT_ID`: Application (client) ID.
 - `MS_CLIENT_SECRET`: Client secret.
 - `MS_SHAREPOINT_SITE_ID`: (Optional) Target SharePoint site ID.
-- `OCU_SALT`: (Required for Production) 16-uint8 hex salt used for HKDF key derivation.
+- `OCU_SALT`: (Required for Production) per-deployment salt string for HKDF key derivation — any high-entropy string works (`openssl rand -hex 16`), it does not have to be hex.

@@ -123,7 +123,7 @@ Secrets (`OCU_MASTER_KEY`, `OCU_SALT`) are injected at runtime via Doppler and a
 
 ### Audit logging by deployment context
 
-Audit logging behavior depends on whether `OCU_AUDIT_PRIVATE_KEY` is configured. The `AuditLogger` interface (`services/refinery/pkg/refinery/refinery.go:27`) is the injection point; the implementation varies:
+Audit logging behavior depends on whether `OCU_AUDIT_PRIVATE_KEY` is configured. The `AuditLogger` interface (`services/refinery/pkg/refinery/refinery.go:22`) is the injection point; the implementation varies:
 
 | Deployment | Logger | What is recorded | Cryptographic protection |
 |---|---|---|---|
@@ -257,7 +257,7 @@ Operators are strongly advised to store `OCU_MASTER_KEY` in a durable secrets ma
 
 ### Storage mechanism
 
-The vault uses DuckDB, an embedded analytical database. In the default community configuration, the DuckDB file is located at the path specified by `OCU_VAULT_PATH` (default: `/data/vault.db`).
+The vault uses DuckDB, an embedded analytical database. In the default configuration, the DuckDB file is located at the path specified by `OCU_VAULT_PATH` (default: `/data/vault.db`).
 
 ### Container persistence
 

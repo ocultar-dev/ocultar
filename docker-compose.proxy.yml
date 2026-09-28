@@ -23,7 +23,7 @@ services:
   # ── OCULTAR Privacy Proxy ────────────────────────────────────────────────
   ocultar-proxy:
     build:
-      context: .   # Repo root — includes both apps/proxy/ and services/engine/
+      context: .   # Repo root — includes both apps/proxy/ and services/refinery/
       dockerfile: apps/proxy/Dockerfile
     container_name: ocultar-proxy
     restart: unless-stopped
