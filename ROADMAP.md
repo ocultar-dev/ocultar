@@ -48,6 +48,17 @@ Initial public release.
 - [ ] Structured error codes in API responses (machine-readable failure reasons)
 - [x] `golangci-lint` pass across all modules
 - [ ] Tighten "Protect Main" ruleset (github.com/ocultar-dev/ocultar/settings/rules/17754757): change org-admin bypass from "Always" to "For pull requests only", and add `lint apps/web` to required status checks alongside `golangci-lint`/`govulncheck` — currently direct pushes to `main` silently bypass PR review and all CI checks
+- [ ] Document the `configs/config.yaml` requirement more prominently for embedders. Found 2026-09-18 auditing a downstream embedder (Ki!): several real features (Postgres vault backend, the policy engine, per-domain Tier-2 sidecar routing, CRM roster sync) are silently unreachable with zero error or log line if no `config.yaml` exists at all — `config.Load()` just no-ops. An embedder that never writes one (a very easy thing to simply never get around to) loses these features with no signal that anything is missing.
+
+### Agent tooling (internal)
+
+Candidates for standalone agents, surfaced while auditing a draft skill library — each wraps an existing, real mechanism rather than inventing new infrastructure:
+
+- [ ] Adversarial PII-bypass agent: drives `internal/pii/fuzz_test.go`'s `FuzzRefineString` against `security/test_data/adversarial_pii.json` on demand, hunting for tier bypasses (Base64/JSON-nesting/Unicode obfuscation) and promoting new failing cases into the regression fixtures
+- [ ] PII regression-gate agent: runs the table-driven `services/refinery` test suite on every detection-rule change and reports recall/precision deltas before merge, rather than relying on a human to remember to run it
+- [ ] Per-tier latency benchmarking agent: profiles the 5-tier detection pipeline (Tier 0 dictionary → Tier 2 SLM) end to end and flags which tier regressed when overall `/api/refine` latency rises
+- [ ] Dataset re-identifiability agent: exposes `services/refinery/pkg/audit/risk.go`'s K-Anonymity/L-Diversity scoring as an on-demand check against an arbitrary structured dataset, independent of the live request path
+- [ ] Release-artifact secret-scan agent: scans the *built* Docker image and release tarball (not just source, which `.github/workflows/gitleaks.yml` already covers) for anything a build step could leak that source scanning can't see
 
 ### Marketing & outreach (high priority — starting 2026-08-29)
 
