@@ -1,7 +1,7 @@
 # Ocultar
 
 [![AGPL v3](https://img.shields.io/badge/license-AGPL%20v3-blue.svg)](LICENSE) [![Commercial License](https://img.shields.io/badge/license-Commercial-green.svg)](COMMERCIAL_LICENSE.md)
-[![Go 1.24+](https://img.shields.io/badge/go-1.24%2B-00ADD8.svg)](https://go.dev)
+[![Go 1.26+](https://img.shields.io/badge/go-1.26%2B-00ADD8.svg)](https://go.dev)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io%2Focultar--dev%2Focultar-blue?logo=docker)](https://github.com/ocultar-dev/ocultar/pkgs/container/ocultar)
 [![Release](https://img.shields.io/github/v/release/ocultar-dev/ocultar)](https://github.com/ocultar-dev/ocultar/releases/latest)
 
@@ -198,7 +198,7 @@ from the client. See `apps/web/public/content/guides/MCP_EXTENSIONS.md` for setu
 
 ## Building from source
 
-Requires Go 1.24+ with CGO enabled (DuckDB and libphonenumber need a C compiler).
+Requires Go 1.26+ with CGO enabled (DuckDB and libphonenumber need a C compiler).
 
 ```bash
 git clone https://github.com/ocultar-dev/ocultar.git
