@@ -5,7 +5,7 @@ RUN npm install
 COPY apps/dashboard/ ./
 RUN npm run build
 
-FROM golang:1.25-bookworm AS builder
+FROM golang:1.26-bookworm AS builder
 
 # Install build dependencies for DuckDB/CGO
 RUN apt-get update && apt-get install -y --no-install-recommends gcc g++ libc6-dev && rm -rf /var/lib/apt/lists/*

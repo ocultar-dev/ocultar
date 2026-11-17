@@ -70,7 +70,7 @@ There is no top-level `pkg/config`, `pkg/refinery`, `pkg/vault`, `pkg/proxy`, `c
 ### `go.work` contents
 
 ```go
-go 1.25.8
+go 1.26.11
 
 use (
     ./apps/proxy
