@@ -83,7 +83,7 @@ jobs:
           fi >> SHA256SUMS-${{ matrix.goos }}-${{ matrix.goarch }}.txt
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/
@@ -107,7 +107,7 @@ jobs:
         run: cyclonedx-gomod mod -output sbom.json -json
         working-directory: services/refinery
 
-      - uses: actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: sbom
           path: services/refinery/sbom.json
