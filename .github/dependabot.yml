@@ -1,54 +1,29 @@
 version: 2
 
 updates:
-  # Go workspace modules
+  # Go workspace modules — one entry so a dependency shared by several
+  # modules arrives as a single cross-module PR instead of N PRs that each
+  # break the workspace. NOTE: Dependabot does not edit go.work; if a bump
+  # raises a module's `go` directive, go.work's `go` line must be bumped by
+  # hand in the same PR or CI (setup-go reads go.work) fails.
   - package-ecosystem: gomod
-    directory: /services/refinery
+    directories:
+      - /apps/proxy
+      - /apps/slm-engine
+      - /apps/sombra
+      - /internal/pii
+      - /pkg/gateway
+      - /services/refinery
+      - /services/vault
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     labels: ["dependencies", "go"]
-
-  - package-ecosystem: gomod
-    directory: /internal/pii
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "go"]
-
-  - package-ecosystem: gomod
-    directory: /services/vault
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "go"]
-
-  - package-ecosystem: gomod
-    directory: /apps/sombra
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "go"]
-
-  - package-ecosystem: gomod
-    directory: /apps/proxy
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "go"]
-
-  - package-ecosystem: gomod
-    directory: /pkg/gateway
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "go"]
+    groups:
+      go-workspace:
+        group-by: dependency-name
+        patterns: ["*"]
 
   # GitHub Actions
   - package-ecosystem: github-actions
