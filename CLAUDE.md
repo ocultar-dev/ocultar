@@ -10,7 +10,7 @@ All components — including the Sombra agentic gateway — are open source. The
 
 ## Prerequisites
 
-- **Go 1.25+** (workspace uses `go 1.25.8`; tested on `go1.26.3`)
+- **Go 1.26+** (workspace uses `go 1.26.11`; modules declare `go 1.26.0`)
 - **CGO enabled** — DuckDB and libphonenumber require a C compiler (`gcc`/`clang`)
 - **Node 18+** for the frontend apps
 

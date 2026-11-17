@@ -1,3 +1,3 @@
 module github.com/ocultar-dev/ocultar/pkg/gateway
 
-go 1.25.8
+go 1.26.0

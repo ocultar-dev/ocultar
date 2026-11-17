@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP `sombra_query` tool**: added to all three MCP extensions (Claude, Goose, Mistral) — sends a prompt through the Sombra gateway for redact-route-rehydrate in one call. Requires `OCULTAR_SOMBRA_TOKEN`.
 
 ### Changed
+- **Go toolchain raised to 1.26** across the workspace (`go.work` → `go 1.26.11`, all 7 modules → `go 1.26.0`, Dockerfiles → `golang:1.26-bookworm`). Required by `golang.org/x/crypto` v0.59.0, `google.golang.org/grpc` v1.85.0 and `prometheus/client_golang` v1.25.0, which Dependabot had been bumping per-module without updating `go.work`, breaking CI on every Go dependency PR.
+- **Dependency bumps (consolidated)**: `golang.org/x/crypto` 0.55.0 → 0.59.0, `google.golang.org/grpc` 1.83.2 → 1.85.0, `github.com/prometheus/client_golang` 1.24.1 → 1.25.0 in `apps/proxy`, `apps/sombra`, `services/refinery`; `github.com/klauspost/compress` pinned to v1.20.2 (fixes GO-2026-6865, pulled in transitively at v1.20.1 by the Prometheus bump).
 - **MCP Mistral extension default `OCULTAR_URL`**: changed from `http://localhost:8080` to `http://localhost:4141` to match the Claude and Goose extensions and this repo's standardized Refinery port. Existing 0.2.0 users relying on the old default will need to set `OCULTAR_URL` explicitly (or upgrade the Refinery's own `--serve` port to match) after upgrading.
 
 ### Fixed
