@@ -7,16 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-11-17
+
 ### Added
+- **MCP extensions on PyPI**: `ocultar-claude-mcp`, `ocultar-goose-mcp` and `ocultar-mistral-mcp` are published to PyPI automatically via trusted publishing (`.github/workflows/mcp-publish.yml`, triggered by `mcp-v*.*.*` tags).
 - **MCP Entity Registry tools**: `register_entity`, `list_entities`, `seed_entities` added to the Claude and Mistral MCP extensions (auditor-only, matching `reveal_tokens`'s existing gate).
 - **MCP `sombra_query` tool**: added to all three MCP extensions (Claude, Goose, Mistral) — sends a prompt through the Sombra gateway for redact-route-rehydrate in one call. Requires `OCULTAR_SOMBRA_TOKEN`.
 
 ### Changed
+- **Relicensed from Apache 2.0 to AGPLv3** (2026-06-28), with a commercial license option for proprietary/SaaS use (see `COMMERCIAL_LICENSE.md`). Releases up to and including v1.15.0 remain under Apache 2.0.
 - **Go toolchain raised to 1.26** across the workspace (`go.work` → `go 1.26.11`, all 7 modules → `go 1.26.0`, Dockerfiles → `golang:1.26-bookworm`). Required by `golang.org/x/crypto` v0.59.0, `google.golang.org/grpc` v1.85.0 and `prometheus/client_golang` v1.25.0, which Dependabot had been bumping per-module without updating `go.work`, breaking CI on every Go dependency PR.
 - **Dependency bumps (consolidated)**: `golang.org/x/crypto` 0.55.0 → 0.59.0, `google.golang.org/grpc` 1.83.2 → 1.85.0, `github.com/prometheus/client_golang` 1.24.1 → 1.25.0 in `apps/proxy`, `apps/sombra`, `services/refinery`; `github.com/klauspost/compress` pinned to v1.20.2 (fixes GO-2026-6865, pulled in transitively at v1.20.1 by the Prometheus bump).
 - **MCP Mistral extension default `OCULTAR_URL`**: changed from `http://localhost:8080` to `http://localhost:4141` to match the Claude and Goose extensions and this repo's standardized Refinery port. Existing 0.2.0 users relying on the old default will need to set `OCULTAR_URL` explicitly (or upgrade the Refinery's own `--serve` port to match) after upgrading.
 
 ### Fixed
+- **Entity Registry tokens were never rehydrated**: `RehydrateString`'s token regex and Sombra's streaming `completeToken`/`incompleteToken` boundary regexes only matched the 16-hex-char hash form, so `[TYPE_N]` tokens (e.g. `[PERSON_1]`) reached authorized callers raw instead of resolving to the canonical name, in both buffered responses (Proxy, Sombra) and Sombra streaming.
+- **Contextual Shield tagged pronouns as PERSON**: a blanket `(?i)` on `greetingRegex`, `nameIntroRegex` and `nameInSentenceRegex` also case-folded the capitalised-first-letter check, so "call me at …" tokenized "me" as a name. Case-insensitivity is now scoped to the trigger words only.
 - **Phone Tier-B over-masking on multi-row score tables**: `phone_parser.go`'s `nonPhoneContextRe` lookback window was only 120 bytes — long enough to reach a table's header context from row 1, not from row 2 onward, so later rows in a French clinical/financial table were misread as phone numbers. Added a same-line `%`/`≤`/`≥`/`<`/`>` suffix guard (no lookback needed) and widened the window to 600 bytes (`phoneContextWindowBytes`). Verified against a real multi-row WISC-V score table; a genuine phone number 2500+ bytes past a guard keyword is still correctly detected.
 - **`BIC` entity had zero validation**: the pattern matched any 8-letter all-caps run (`Validator: ValNone`) with no real-world signal, misclassifying ordinary text (e.g. an all-caps section header split at a non-ASCII character) as a bank BIC/SWIFT code. Context-gated the pattern on a nearby `bic`/`swift` label, mirroring the existing context-gated `IBAN` entry, and added `IsBICCountryValid` (ISO 3166-1 alpha-2 check on chars 5-6) as defense-in-depth.
 - **Structural "greedy neighborhood" name expansion swallowed adjacent text**: `tier3_structural.go`'s entity-expansion heuristic absorbed any capitalized word immediately after a detected name/entity token, with `strings.Fields` treating newlines as plain whitespace. This ate structural labels sitting on the same line as a name (e.g. "Dylan Kherrab Date" → the label "Date" disappeared) and merged entities across blank-line paragraph breaks into the next section's first capitalized word (e.g. a name in a page footer swallowing "Copyright" from the boilerplate two lines down). Fixed with a label-blocklist guard (reusing `isBlockedSLMLabel` from the Tier 2 AI-NER path) plus a hard stop at any newline in the expansion gap.
@@ -25,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`.gitignore` audit log coverage**: `audit.log*` only matched the proxy's default audit-log basename, missing Sombra's hardcoded `sombra_audit.log` and its rotated `*.archived` segments. Widened to `*audit.log*` so a careless `git add -A` can't commit a hash-chained compliance log to the repo.
 - **MCP extension license metadata**: all three MCP packages (`ocultar-claude-mcp`, `ocultar-goose-mcp`, `ocultar-mistral-mcp`) were still declaring `Apache-2.0` after the repo-wide relicense to AGPLv3 on 2026-06-28 — corrected to `AGPL-3.0-only` across `pyproject.toml`, `manifest.json`/`extension.yaml`, and README files. `extensions/{claude,mistral}/manifest.json` also still pointed at the old `Edu963/ocultar` personal fork — corrected to `ocultar-dev/ocultar`.
 - **MCP Goose extension error hint**: the connection-error remediation message referenced the personal Docker registry namespace `ghcr.io/edu963/ocultar` — corrected to `ghcr.io/ocultar-dev/ocultar`.
+
+### Security
+- **Go stdlib CVEs closed** via toolchain bumps 1.25.11 → 1.25.12 (GO-2026-5856, crypto/tls ECH privacy leak) → 1.25.13 (GO-2026-6218 net/url, GO-2026-6091 html/template, GO-2026-6090 crypto/tls, GO-2026-6089 net/http, GO-2026-6088 encoding/xml, GO-2026-5972 encoding/asn1) → 1.26.11.
+- **`klauspost/compress` GO-2026-6865** fixed by pinning v1.20.2 (see Changed).
 
 ## [1.15.0] - 2026-06-26
 
