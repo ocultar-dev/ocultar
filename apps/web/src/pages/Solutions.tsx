@@ -6,6 +6,7 @@ import {
 import { SiteNav } from "@/components/site/SiteNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SectionHeader } from "@/components/site/ProblemSection";
+import { useSeo } from "@/hooks/useSeo";
 
 const MODELS = [
   { name: "GPT-4o", provider: "OpenAI", file: "router/openai.go" },
@@ -86,6 +87,7 @@ const ProductEyebrow = ({ icon: Icon, label }: { icon: LucideIcon; label: string
 );
 
 const Solutions = () => {
+  useSeo({ path: "/solutions" });
   return (
     <main className="min-h-screen bg-background text-foreground">
       <SiteNav />

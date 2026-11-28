@@ -1,6 +1,6 @@
 import { SiteNav } from "@/components/site/SiteNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
-import { useEffect } from "react";
+import { useSeo } from "@/hooks/useSeo";
 
 const LINK_CLASS = "text-primary hover:underline underline-offset-4";
 
@@ -54,9 +54,7 @@ const LINKS = [
 ];
 
 export default function About() {
-  useEffect(() => {
-    document.title = "About — OCULTAR";
-  }, []);
+  useSeo({ path: "/about" });
 
   return (
     <div className="min-h-screen bg-background text-foreground">

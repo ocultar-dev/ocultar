@@ -1,6 +1,6 @@
 import { SiteNav } from "@/components/site/SiteNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
-import { useEffect } from "react";
+import { useSeo } from "@/hooks/useSeo";
 
 const SECTIONS = [
   {
@@ -64,9 +64,7 @@ const SECTIONS = [
 ];
 
 export default function Privacy() {
-  useEffect(() => {
-    document.title = "Privacy Policy — OCULTAR";
-  }, []);
+  useSeo({ path: "/privacy" });
 
   return (
     <div className="min-h-screen bg-background text-foreground">

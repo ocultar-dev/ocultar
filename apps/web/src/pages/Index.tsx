@@ -6,8 +6,10 @@ import { Developers } from "@/components/site/Developers";
 import { Compliance } from "@/components/site/Compliance";
 import { FinalCTA } from "@/components/site/FinalCTA";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { useSeo } from "@/hooks/useSeo";
 
 const Index = () => {
+  useSeo({ path: "/" });
   return (
     <main className="min-h-screen bg-background text-foreground">
       <SiteNav />

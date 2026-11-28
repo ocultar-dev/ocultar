@@ -4,6 +4,7 @@ import {
   Shield, Upload, FileText, AlertTriangle, ArrowRight,
   Loader2, CheckCircle2, BarChart3, Activity, Lock, ArrowLeft
 } from 'lucide-react';
+import { useSeo } from '@/hooks/useSeo';
 interface RegulatoryFinding {
   attribute: string;
   regulation: string;
@@ -37,6 +38,7 @@ interface Report {
 }
 
 export default function RiskAssessment() {
+  useSeo({ path: '/risk-assessment' });
   const [step, setStep] = useState(1);
   const [inputType, setInputType] = useState<'paste' | 'upload'>('paste');
   const [pastedData, setPastedData] = useState(`[
