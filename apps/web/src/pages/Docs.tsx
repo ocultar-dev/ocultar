@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SiteNav } from "@/components/site/SiteNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { useSeo } from "@/hooks/useSeo";
 
 const SECTIONS = [
   {
@@ -61,6 +62,8 @@ export default function Docs() {
   const { "*": docPath } = useParams();
   const navigate = useNavigate();
   const activePath = docPath || DEFAULT_DOC;
+  const cleanDocPath = activePath.replace(/\.md$/, "");
+  useSeo({ path: docPath ? `/docs/${cleanDocPath}` : "/docs" });
 
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState(false);

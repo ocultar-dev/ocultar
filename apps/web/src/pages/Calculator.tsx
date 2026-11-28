@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, ArrowLeft, BarChart3, Box, ChevronRight } from 'lucide-react';
+import { useSeo } from '@/hooks/useSeo';
 
 type ProviderId = 'gcp' | 'aws' | 'azure';
 
@@ -20,6 +21,7 @@ const fmtRate = (val: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
 export default function Calculator() {
+  useSeo({ path: '/calculator' });
   const [provider, setProvider] = useState<ProviderId>('gcp');
   const [volume, setVolume] = useState(10);
   const [discount, setDiscount] = useState(0);

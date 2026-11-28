@@ -7,23 +7,27 @@ const COLS = [
   {
     title: "Platform",
     links: [
-      { label: "Architecture", href: "#architecture" },
-      { label: "Compliance", href: "#compliance" },
-      { label: "Developers", href: "#developers" },
+      { label: "Architecture", href: "/#architecture" },
+      { label: "Compliance", href: "/#compliance" },
+      { label: "Developers", href: "/#developers" },
+      { label: "Solutions", href: "/solutions" },
     ],
   },
   {
-    title: "Resources",
+    title: "Guides & Compare",
     links: [
-      { label: "GitHub", href: "https://github.com/ocultar-dev/ocultar" },
-      { label: "Documentation", href: "https://github.com/ocultar-dev/ocultar#readme" },
-      { label: "Security", href: "https://github.com/ocultar-dev/ocultar/blob/main/SECURITY.md" },
+      { label: "vs Microsoft Presidio", href: "/vs-microsoft-presidio" },
+      { label: "Claude MCP PII Guide", href: "/guides/redact-pii-claude-mcp" },
+      { label: "GDPR & EU AI Act", href: "/guides/local-pii-redaction-gdpr-eu-ai-act" },
+      { label: "Documentation", href: "/docs" },
     ],
   },
   {
     title: "Company",
     links: [
       { label: "About", href: "/about" },
+      { label: "GitHub", href: "https://github.com/ocultar-dev/ocultar" },
+      { label: "Security", href: "https://github.com/ocultar-dev/ocultar/blob/main/SECURITY.md" },
       { label: "Contact", href: "mailto:edu@ocultar.dev" },
       { label: "Privacy", href: "/privacy" },
     ],
